@@ -1,7 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { App } from './components/index.jsx'
 
-ReactDOM.render( < App / > ,
-    document.getElementById('app')
+import Header from './components/Header.jsx'
+import Categories from './components/Categories.jsx'
+
+ReactDOM.render( < div > < h1 > Hola mundo!! < /h1> <Header / > < br / > < Categories categories = {
+        ['autos', 'celulares', 'camperas', 'guitarras']
+    }
+    /> </div > , document.getElementById('app')
 )
