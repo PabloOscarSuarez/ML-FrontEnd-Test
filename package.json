@@ -5,8 +5,8 @@
     "main": "server.js",
     "scripts": {
         "start": "concurrently \"webpack-dev-server --mode development --open\" \"node server.js\"",
-        "dev": "webpack --mode development",
-        "build": "webpack --mode production && node server.js"
+        "dev": "webpack --mode development && node server.js",
+        "build": "webpack --mode production"
     },
     "author": "Hugo Flotts <hugoflotts@hotmail.com>",
     "license": "MIT",

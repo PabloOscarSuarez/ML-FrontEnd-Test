@@ -1,5 +1,5 @@
 const express = require('express'),
-    router = express.Router(),
+    router = express.Router({ strict: true }),
     detail = require('./detail'),
     results = require('./results')
 

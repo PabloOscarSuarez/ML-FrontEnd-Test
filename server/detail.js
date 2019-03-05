@@ -1,26 +1,55 @@
-module.exports = function(req, res) {
-    const id = req.params.id
-    console.log(`Detalle de: ${id}`)
+const request = require('request'),
+      errorApi = require('./error')
 
-    const detail = {
-        author: {
-            name: "Hugo",
-            lastname: "Flotts"
-        },
-        item: {
-            id: "MLA721960793",
-            title: "Adaptador Cargador Usb A 12v Auto Android Iphone 3 Puertos",
-            price: {
-                currency: "ARS",
-                amount: 70,
-                decimals: 0
-            },
-            picture: "http://mla-s2-p.mlstatic.com/925800-MLA27268865134_042018-I.jpg",
-            condition: "new",
-            free_shipping: false,
-            sold_quantity: 5,
-            description: "ESPECIFICACIONES: - Adaptador/Cargador Usb A 12v Auto - Permite cargar tu Smartphone, Ipod, Iphone, Samsung desde tu Auto. - 3 puertos de conexión (2,1a; 2a y 1a) - Colores: Blanco c/ azul, dorado o verde. CONTAMOS CON DOS OPCIONES DE RETIRO: - NUESTRO LOCAL UBICADO EN MARTINEZ SOBRE LA CALLE EDISON (ENTRE FLEMING Y SANTA FE) - POR RAMOS MEJIA A 7 CUADRAS DE LA ESTACION, PREVIA COORDINACION. * CONTAMOS CON PRECIOS MAYORISTAS Y MINORISTAS * * QUERI ACCESORIOS *"
-        }
+module.exports = function(req, res) {
+  const id = req.params.id
+  // console.log(`Detalle de: ${id}`)
+
+  request(`https://api.mercadolibre.com/items/${id}`, function(error, response, body) {
+    if (!error) {
+    const data = JSON.parse(body)
+      if (!data.error) {
+        const amount = Math.floor(data.price),
+              decimals = (data.price % 1).toFixed(2).substring(2),
+              picture = data.pictures.length ? data.pictures[0].secure_url : '',
+              detail = {
+                  author: {
+                    name: 'Hugo',
+                    lastname: 'Flotts'
+                  },
+                  item: {
+                    id: data.id,
+                    title: data.title,
+                    price: {
+                      currency: data.currency_id,
+                      amount,
+                      decimals
+                    },
+                      picture,
+                      condition: data.condition,
+                      free_shipping: data.shipping ? data.shipping.free_shipping : false,
+                      sold_quantity: data.sold_quantity,
+                      description: ''
+                  }
+                }
+                request(`https://api.mercadolibre.com/items/​${id}​/description`, function(error, response, body) {
+                  if (!error) {
+                    const data = JSON.parse(body)
+                    if(!data.error){
+                      detail.item.description = data.plain_text
+                      res.send(detail)
+                    } else {
+                      res.send(errorApi)
+                    }
+                  } else {
+                    res.send(errorApi)
+                  }
+                })
+      } else {
+        res.send(errorApi)
+      }
+    } else {
+      res.send(errorApi)
     }
-    res.send(detail)
+  })
 }
