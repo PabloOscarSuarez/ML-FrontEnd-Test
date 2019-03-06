@@ -86,6 +86,112 @@
 /************************************************************************/
 /******/ ({
 
+/***/ "./node_modules/decode-uri-component/index.js":
+/*!****************************************************!*\
+  !*** ./node_modules/decode-uri-component/index.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var token = '%[a-f0-9]{2}';
+var singleMatcher = new RegExp(token, 'gi');
+var multiMatcher = new RegExp('(' + token + ')+', 'gi');
+
+function decodeComponents(components, split) {
+	try {
+		// Try to decode the entire string first
+		return decodeURIComponent(components.join(''));
+	} catch (err) {
+		// Do nothing
+	}
+
+	if (components.length === 1) {
+		return components;
+	}
+
+	split = split || 1;
+
+	// Split the array in 2 parts
+	var left = components.slice(0, split);
+	var right = components.slice(split);
+
+	return Array.prototype.concat.call([], decodeComponents(left), decodeComponents(right));
+}
+
+function decode(input) {
+	try {
+		return decodeURIComponent(input);
+	} catch (err) {
+		var tokens = input.match(singleMatcher);
+
+		for (var i = 1; i < tokens.length; i++) {
+			input = decodeComponents(tokens, i).join('');
+
+			tokens = input.match(singleMatcher);
+		}
+
+		return input;
+	}
+}
+
+function customDecodeURIComponent(input) {
+	// Keep track of all the replacements and prefill the map with the `BOM`
+	var replaceMap = {
+		'%FE%FF': '\uFFFD\uFFFD',
+		'%FF%FE': '\uFFFD\uFFFD'
+	};
+
+	var match = multiMatcher.exec(input);
+	while (match) {
+		try {
+			// Decode as big chunks as possible
+			replaceMap[match[0]] = decodeURIComponent(match[0]);
+		} catch (err) {
+			var result = decode(match[0]);
+
+			if (result !== match[0]) {
+				replaceMap[match[0]] = result;
+			}
+		}
+
+		match = multiMatcher.exec(input);
+	}
+
+	// Add `%C2` at the end of the map to make sure it does not replace the combinator before everything else
+	replaceMap['%C2'] = '\uFFFD';
+
+	var entries = Object.keys(replaceMap);
+
+	for (var i = 0; i < entries.length; i++) {
+		// Replace all decoded components
+		var key = entries[i];
+		input = input.replace(new RegExp(key, 'g'), replaceMap[key]);
+	}
+
+	return input;
+}
+
+module.exports = function (encodedURI) {
+	if (typeof encodedURI !== 'string') {
+		throw new TypeError('Expected `encodedURI` to be of type `string`, got `' + typeof encodedURI + '`');
+	}
+
+	try {
+		encodedURI = encodedURI.replace(/\+/g, ' ');
+
+		// Try the built in decoder first
+		return decodeURIComponent(encodedURI);
+	} catch (err) {
+		// Fallback to a more advanced decoder
+		return customDecodeURIComponent(encodedURI);
+	}
+};
+
+
+/***/ }),
+
 /***/ "./node_modules/history/es/DOMUtils.js":
 /*!*********************************************!*\
   !*** ./node_modules/history/es/DOMUtils.js ***!
@@ -2337,6 +2443,253 @@ if (true) {
 var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 module.exports = ReactPropTypesSecret;
+
+
+/***/ }),
+
+/***/ "./node_modules/query-string/index.js":
+/*!********************************************!*\
+  !*** ./node_modules/query-string/index.js ***!
+  \********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+const strictUriEncode = __webpack_require__(/*! strict-uri-encode */ "./node_modules/strict-uri-encode/index.js");
+const decodeComponent = __webpack_require__(/*! decode-uri-component */ "./node_modules/decode-uri-component/index.js");
+
+function encoderForArrayFormat(options) {
+	switch (options.arrayFormat) {
+		case 'index':
+			return (key, value, index) => {
+				return value === null ? [
+					encode(key, options),
+					'[',
+					index,
+					']'
+				].join('') : [
+					encode(key, options),
+					'[',
+					encode(index, options),
+					']=',
+					encode(value, options)
+				].join('');
+			};
+
+		case 'bracket':
+			return (key, value) => {
+				return value === null ? [encode(key, options), '[]'].join('') : [
+					encode(key, options),
+					'[]=',
+					encode(value, options)
+				].join('');
+			};
+
+		default:
+			return (key, value) => {
+				return value === null ? encode(key, options) : [
+					encode(key, options),
+					'=',
+					encode(value, options)
+				].join('');
+			};
+	}
+}
+
+function parserForArrayFormat(options) {
+	let result;
+
+	switch (options.arrayFormat) {
+		case 'index':
+			return (key, value, accumulator) => {
+				result = /\[(\d*)\]$/.exec(key);
+
+				key = key.replace(/\[\d*\]$/, '');
+
+				if (!result) {
+					accumulator[key] = value;
+					return;
+				}
+
+				if (accumulator[key] === undefined) {
+					accumulator[key] = {};
+				}
+
+				accumulator[key][result[1]] = value;
+			};
+
+		case 'bracket':
+			return (key, value, accumulator) => {
+				result = /(\[\])$/.exec(key);
+				key = key.replace(/\[\]$/, '');
+
+				if (!result) {
+					accumulator[key] = value;
+					return;
+				}
+
+				if (accumulator[key] === undefined) {
+					accumulator[key] = [value];
+					return;
+				}
+
+				accumulator[key] = [].concat(accumulator[key], value);
+			};
+
+		default:
+			return (key, value, accumulator) => {
+				if (accumulator[key] === undefined) {
+					accumulator[key] = value;
+					return;
+				}
+
+				accumulator[key] = [].concat(accumulator[key], value);
+			};
+	}
+}
+
+function encode(value, options) {
+	if (options.encode) {
+		return options.strict ? strictUriEncode(value) : encodeURIComponent(value);
+	}
+
+	return value;
+}
+
+function decode(value, options) {
+	if (options.decode) {
+		return decodeComponent(value);
+	}
+
+	return value;
+}
+
+function keysSorter(input) {
+	if (Array.isArray(input)) {
+		return input.sort();
+	}
+
+	if (typeof input === 'object') {
+		return keysSorter(Object.keys(input))
+			.sort((a, b) => Number(a) - Number(b))
+			.map(key => input[key]);
+	}
+
+	return input;
+}
+
+function extract(input) {
+	const queryStart = input.indexOf('?');
+	if (queryStart === -1) {
+		return '';
+	}
+
+	return input.slice(queryStart + 1);
+}
+
+function parse(input, options) {
+	options = Object.assign({decode: true, arrayFormat: 'none'}, options);
+
+	const formatter = parserForArrayFormat(options);
+
+	// Create an object with no prototype
+	const ret = Object.create(null);
+
+	if (typeof input !== 'string') {
+		return ret;
+	}
+
+	input = input.trim().replace(/^[?#&]/, '');
+
+	if (!input) {
+		return ret;
+	}
+
+	for (const param of input.split('&')) {
+		let [key, value] = param.replace(/\+/g, ' ').split('=');
+
+		// Missing `=` should be `null`:
+		// http://w3.org/TR/2012/WD-url-20120524/#collect-url-parameters
+		value = value === undefined ? null : decode(value, options);
+
+		formatter(decode(key, options), value, ret);
+	}
+
+	return Object.keys(ret).sort().reduce((result, key) => {
+		const value = ret[key];
+		if (Boolean(value) && typeof value === 'object' && !Array.isArray(value)) {
+			// Sort object keys, not values
+			result[key] = keysSorter(value);
+		} else {
+			result[key] = value;
+		}
+
+		return result;
+	}, Object.create(null));
+}
+
+exports.extract = extract;
+exports.parse = parse;
+
+exports.stringify = (obj, options) => {
+	if (!obj) {
+		return '';
+	}
+
+	options = Object.assign({
+		encode: true,
+		strict: true,
+		arrayFormat: 'none'
+	}, options);
+
+	const formatter = encoderForArrayFormat(options);
+	const keys = Object.keys(obj);
+
+	if (options.sort !== false) {
+		keys.sort(options.sort);
+	}
+
+	return keys.map(key => {
+		const value = obj[key];
+
+		if (value === undefined) {
+			return '';
+		}
+
+		if (value === null) {
+			return encode(key, options);
+		}
+
+		if (Array.isArray(value)) {
+			const result = [];
+
+			for (const value2 of value.slice()) {
+				if (value2 === undefined) {
+					continue;
+				}
+
+				result.push(formatter(key, value2, result.length));
+			}
+
+			return result.join('&');
+		}
+
+		return encode(key, options) + '=' + encode(value, options);
+	}).filter(x => x.length > 0).join('&');
+};
+
+exports.parseUrl = (input, options) => {
+	const hashStart = input.indexOf('#');
+	if (hashStart !== -1) {
+		input = input.slice(0, hashStart);
+	}
+
+	return {
+		url: input.split('?')[0] || '',
+		query: parse(extract(input), options)
+	};
+};
 
 
 /***/ }),
@@ -29033,6 +29386,20 @@ if (false) {} else {
 
 /***/ }),
 
+/***/ "./node_modules/strict-uri-encode/index.js":
+/*!*************************************************!*\
+  !*** ./node_modules/strict-uri-encode/index.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+module.exports = str => encodeURIComponent(str).replace(/[!'()*]/g, x => `%${x.charCodeAt(0).toString(16).toUpperCase()}`);
+
+
+/***/ }),
+
 /***/ "./node_modules/value-equal/index.js":
 /*!*******************************************!*\
   !*** ./node_modules/value-equal/index.js ***!
@@ -29202,11 +29569,17 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
 var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 
 var _react2 = _interopRequireDefault(_react);
 
 var _reactRouterDom = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router-dom/es/index.js");
+
+var _queryString = __webpack_require__(/*! query-string */ "./node_modules/query-string/index.js");
+
+var _queryString2 = _interopRequireDefault(_queryString);
 
 var _Header = __webpack_require__(/*! ./Header.jsx */ "./src/components/Header.jsx");
 
@@ -29222,22 +29595,64 @@ var _Error2 = _interopRequireDefault(_Error);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var App = function App() {
-  return _react2.default.createElement(
-    'div',
-    { className: 'container' },
-    _react2.default.createElement(_Header2.default, null),
-    _react2.default.createElement(
-      _reactRouterDom.Switch,
-      null,
-      _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/' }),
-      _react2.default.createElement(_reactRouterDom.Route, { path: '/items', component: _Items2.default }),
-      _react2.default.createElement(_reactRouterDom.Route, { component: _Error2.default })
-    )
-  );
-};
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
+
+//Components
+
+
+var App = function (_Component) {
+  _inherits(App, _Component);
+
+  function App(props) {
+    _classCallCheck(this, App);
+
+    var _this = _possibleConstructorReturn(this, (App.__proto__ || Object.getPrototypeOf(App)).call(this, props));
+
+    var parsedQuery = _queryString2.default.parse(props.location.search);
+    console.log(parsedQuery);
+    _this.state = {
+      search: parsedQuery.search || ''
+    };
+    _this.handleSearchSubmit = _this.handleSearchSubmit.bind(_this);
+    return _this;
+  }
+
+  _createClass(App, [{
+    key: 'handleSearchSubmit',
+    value: function handleSearchSubmit(query) {
+      this.props.history.push({ pathname: '/items', search: 'search=' + query });
+      this.setState({ search: query });
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      return _react2.default.createElement(
+        'div',
+        { className: 'container' },
+        _react2.default.createElement(_Header2.default, {
+          search: this.state.search,
+          onSearchSubmit: this.handleSearchSubmit
+        }),
+        _react2.default.createElement(
+          _reactRouterDom.Switch,
+          null,
+          _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/', render: null }),
+          _react2.default.createElement(_reactRouterDom.Route, { path: '/items', component: _Items2.default }),
+          _react2.default.createElement(_reactRouterDom.Route, { component: _Error2.default })
+        )
+      );
+    }
+  }]);
+
+  return App;
+}(_react.Component);
 
 exports.default = App;
+// export default withRouter(App)
 
 /***/ }),
 
@@ -29261,75 +29676,95 @@ var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 
 var _react2 = _interopRequireDefault(_react);
 
+var _Category = __webpack_require__(/*! ./Category.jsx */ "./src/components/Category.jsx");
+
+var _Category2 = _interopRequireDefault(_Category);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
+
+//Components
+
 
 var Categories = function (_Component) {
   _inherits(Categories, _Component);
 
-  function Categories() {
-    var _ref;
-
+  function Categories(props) {
     _classCallCheck(this, Categories);
 
-    for (var _len = arguments.length, props = Array(_len), _key = 0; _key < _len; _key++) {
-      props[_key] = arguments[_key];
-    }
-
-    var _this = _possibleConstructorReturn(this, (_ref = Categories.__proto__ || Object.getPrototypeOf(Categories)).call.apply(_ref, [this].concat(props)));
-
-    _this.state = {
-      categories: props.categories
-    };
-    return _this;
+    return _possibleConstructorReturn(this, (Categories.__proto__ || Object.getPrototypeOf(Categories)).call(this, props));
   }
 
   _createClass(Categories, [{
-    key: "render",
+    key: 'render',
     value: function render() {
-      var list = [];
-      for (var i = 0; i < this.state.categories.length; i++) {
-        list.push(_react2.default.createElement(Category, { name: this.state.categories[i] }));
-        list.push(_react2.default.createElement(Separator, null));
+      var catLength = this.props.categories.length;
+      if (catLength) {
+        var catList = [];
+        for (var i = 0; i < catLength - 1; i++) {
+          var category = this.props.categories[i];
+          catList.push(_react2.default.createElement(_Category2.default, { key: category, name: category }));
+        }
+        var lastCat = this.props.categories[catLength - 1];
+        catList.push(_react2.default.createElement(_Category2.default, { lastCat: true, key: lastCat, name: lastCat }));
+        return _react2.default.createElement(
+          'div',
+          null,
+          catList
+        );
+      } else {
+        return null;
       }
-      list.push(_react2.default.createElement(Category, { className: "last", name: this.state.categories[length - 1] }));
-
-      return _react2.default.createElement(
-        "div",
-        null,
-        list
-      );
     }
   }]);
 
   return Categories;
 }(_react.Component);
 
-function Separator(props) {
-  return _react2.default.createElement(
-    "span",
-    { className: "separator" },
-    ">"
-  );
-}
-
-function Category(props) {
-  return _react2.default.createElement(
-    "span",
-    { className: (props.className || "") + "category" },
-    props.name
-  );
-}
-
-Categories.propTypes = {};
-Categories.defaultProps = {};
-
 exports.default = Categories;
+
+/***/ }),
+
+/***/ "./src/components/Category.jsx":
+/*!*************************************!*\
+  !*** ./src/components/Category.jsx ***!
+  \*************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var Category = function Category(props) {
+
+  return _react2.default.createElement(
+    'span',
+    { className: (props.lastCat ? 'last-' : '') + "category" },
+    props.name,
+    !props.lastCat && _react2.default.createElement(
+      'i',
+      { className: 'separator' },
+      ' > '
+    )
+  );
+};
+
+exports.default = Category;
 
 /***/ }),
 
@@ -29353,14 +29788,13 @@ var _react2 = _interopRequireDefault(_react);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var NotFound = function NotFound() {
+var NotFound = function NotFound(props) {
   return _react2.default.createElement(
     'span',
     null,
     'La ubicaci\xF3n solicitada no ha sido encontrada'
   );
-};
-
+}; //Dependencies
 exports.default = NotFound;
 
 /***/ }),
@@ -29391,34 +29825,43 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
+
+
+// import PropTypes from 'prop-types'
 
 var Header = function (_Component) {
   _inherits(Header, _Component);
 
-  function Header() {
-    var _ref;
-
+  // static propTypes = {
+  //   search: PropTypes.string.isRequired
+  // }
+  function Header(props) {
     _classCallCheck(this, Header);
 
-    for (var _len = arguments.length, props = Array(_len), _key = 0; _key < _len; _key++) {
-      props[_key] = arguments[_key];
-    }
+    var _this = _possibleConstructorReturn(this, (Header.__proto__ || Object.getPrototypeOf(Header)).call(this, props));
 
-    return _possibleConstructorReturn(this, (_ref = Header.__proto__ || Object.getPrototypeOf(Header)).call.apply(_ref, [this].concat(props)));
+    _this.handleSearchSubmit = _this.handleSearchSubmit.bind(_this);
+    return _this;
   }
 
   _createClass(Header, [{
+    key: "handleSearchSubmit",
+    value: function handleSearchSubmit(e) {
+      e.preventDefault();
+      this.props.onSearchSubmit(this.query.value);
+    }
+  }, {
     key: "render",
     value: function render() {
       var _this2 = this;
 
       return _react2.default.createElement(
         "form",
-        { onSubmit: this.submit.bind(this) },
+        { onSubmit: this.handleSearchSubmit },
         _react2.default.createElement("input", { type: "text", ref: function ref(node) {
             return _this2.query = node;
-          }, value: this.props.search }),
+          }, defaultValue: this.props.search }),
         _react2.default.createElement(
           "button",
           { type: "submit" },
@@ -29426,19 +29869,10 @@ var Header = function (_Component) {
         )
       );
     }
-  }, {
-    key: "submit",
-    value: function submit(e) {
-      e.preventDefault();
-      console.log(this.query.value);
-    }
   }]);
 
   return Header;
 }(_react.Component);
-
-Header.propTypes = {};
-Header.defaultProps = {};
 
 exports.default = Header;
 
@@ -29464,61 +29898,143 @@ var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 
 var _react2 = _interopRequireDefault(_react);
 
+var _Categories = __webpack_require__(/*! ./Categories.jsx */ "./src/components/Categories.jsx");
+
+var _Categories2 = _interopRequireDefault(_Categories);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
+
+//Components
+
 
 var ItemDetail = function (_Component) {
   _inherits(ItemDetail, _Component);
 
-  function ItemDetail() {
-    var _ref;
-
+  function ItemDetail(props) {
     _classCallCheck(this, ItemDetail);
 
-    for (var _len = arguments.length, props = Array(_len), _key = 0; _key < _len; _key++) {
-      props[_key] = arguments[_key];
-    }
-
-    var _this = _possibleConstructorReturn(this, (_ref = ItemDetail.__proto__ || Object.getPrototypeOf(ItemDetail)).call.apply(_ref, [this].concat(props)));
+    var _this = _possibleConstructorReturn(this, (ItemDetail.__proto__ || Object.getPrototypeOf(ItemDetail)).call(this, props));
 
     _this.state = {
-      item: {}
+      item: {},
+      categories: [],
+      noResults: false
     };
     return _this;
   }
 
   _createClass(ItemDetail, [{
-    key: "render",
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      var _this2 = this;
+
+      fetch('/api/items/' + this.props.match.params.id).then(function (results) {
+        return results.json();
+      }).then(function (data) {
+        if (data.status === 404) {
+          _this2.setState({
+            noResults: true
+          });
+        } else {
+          _this2.setState({
+            item: data.item,
+            categories: data.categories,
+            noResults: !!data.item
+          });
+        }
+      });
+    }
+  }, {
+    key: 'render',
     value: function render() {
-      return _react2.default.createElement(
-        "div",
-        { className: "itemDetail" },
-        _react2.default.createElement("img", { src: this.state.item.thumbnail }),
-        _react2.default.createElement(
-          "div",
-          null,
-          "$ ",
-          this.state.item.price
-        ),
-        _react2.default.createElement(
-          "div",
-          null,
-          this.state.item.title
-        )
-      );
+      var item = this.state.item;
+      if (item.id) {
+        return _react2.default.createElement(
+          'main',
+          { role: 'main' },
+          _react2.default.createElement(
+            'div',
+            { className: 'categories-nav' },
+            _react2.default.createElement(_Categories2.default, { categories: this.state.categories })
+          ),
+          _react2.default.createElement(
+            'div',
+            { className: 'item-detail' },
+            _react2.default.createElement('img', { src: item.picture, alt: item.title }),
+            _react2.default.createElement(
+              'div',
+              { className: 'item-status' },
+              item.condition == 'new' ? 'Nuevo' : 'Usado',
+              item.sold_quantity > 0 ? ' - ' + item.sold_quantity + ' vendidos' : ' - Sé el primero en comprarlo!'
+            ),
+            _react2.default.createElement(
+              'h1',
+              null,
+              item.title
+            ),
+            _react2.default.createElement(
+              'div',
+              { className: 'item-price' },
+              _react2.default.createElement(
+                'span',
+                { className: 'price-tag' },
+                '$ ',
+                item.price.amount,
+                ' ',
+                item.price.decimals > 0 && item.price.decimals
+              )
+            ),
+            _react2.default.createElement(
+              'section',
+              { className: 'item-description' },
+              _react2.default.createElement(
+                'h2',
+                null,
+                'Descripci\xF3n del producto'
+              ),
+              !!item.description ? _react2.default.createElement(
+                'p',
+                null,
+                item.description
+              ) : _react2.default.createElement(
+                'p',
+                null,
+                'El vendedor no incluy\xF3 una descripci\xF3n del producto'
+              )
+            )
+          )
+        );
+      } else if (this.state.noResults) {
+        return _react2.default.createElement(
+          'div',
+          { className: 'info' },
+          _react2.default.createElement(
+            'h3',
+            null,
+            'El producto solicitado no se encuentra disponible'
+          ),
+          _react2.default.createElement(
+            'ul',
+            null,
+            _react2.default.createElement(
+              'li',
+              null,
+              'Navega por las categor\xEDas para encontrar un producto similar.'
+            )
+          )
+        );
+      } else return null;
     }
   }]);
 
   return ItemDetail;
 }(_react.Component);
-
-ItemDetail.propTypes = {};
-ItemDetail.defaultProps = {};
 
 exports.default = ItemDetail;
 
@@ -29546,14 +30062,6 @@ var _react2 = _interopRequireDefault(_react);
 
 var _reactRouterDom = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router-dom/es/index.js");
 
-var _Header = __webpack_require__(/*! ./Header.jsx */ "./src/components/Header.jsx");
-
-var _Header2 = _interopRequireDefault(_Header);
-
-var _Categories = __webpack_require__(/*! ./Categories.jsx */ "./src/components/Categories.jsx");
-
-var _Categories2 = _interopRequireDefault(_Categories);
-
 var _Results = __webpack_require__(/*! ./Results.jsx */ "./src/components/Results.jsx");
 
 var _Results2 = _interopRequireDefault(_Results);
@@ -29568,68 +30076,34 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
+
+//Components
+
 
 var Items = function (_Component) {
   _inherits(Items, _Component);
 
-  function Items() {
-    var _ref;
-
+  function Items(props) {
     _classCallCheck(this, Items);
 
-    for (var _len = arguments.length, props = Array(_len), _key = 0; _key < _len; _key++) {
-      props[_key] = arguments[_key];
-    }
-
-    var _this = _possibleConstructorReturn(this, (_ref = Items.__proto__ || Object.getPrototypeOf(Items)).call.apply(_ref, [this].concat(props)));
-
-    _this.state = {
-      items: {}
-    };
-    return _this;
+    return _possibleConstructorReturn(this, (Items.__proto__ || Object.getPrototypeOf(Items)).call(this, props));
   }
 
   _createClass(Items, [{
-    key: 'componentDidMount',
-    value: function componentDidMount() {
-      var _this2 = this;
-
-      fetch('/items').then(function (results) {
-        return results.json();
-      }).then(function (data) {
-        var items = data.results.map(function (item) {
-          return _react2.default.createElement(Item, { key: item.id, title: item.title, thumbnail: item.thumbnail, price: item.price });
-        });
-        _this2.setState({ items: items });
-      });
-    }
-  }, {
     key: 'render',
     value: function render() {
       return _react2.default.createElement(
-        'items',
+        _reactRouterDom.Switch,
         null,
-        _react2.default.createElement(_Categories2.default, { categories: [1, 2, 3, 4, 5, 6] }),
-        _react2.default.createElement(
-          _reactRouterDom.Switch,
-          null,
-          _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/items', render: function render(props) {
-              return _react2.default.createElement(_Results2.default, { items: data });
-            } }),
-          _react2.default.createElement(_reactRouterDom.Route, { path: '/items/:id', render: function render(props) {
-              return _react2.default.createElement(_ItemDetail2.default, { item: data });
-            } })
-        )
+        _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/items', component: _Results2.default }),
+        _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/items/:id', component: _ItemDetail2.default })
       );
     }
   }]);
 
   return Items;
 }(_react.Component);
-
-Items.propTypes = {};
-Items.defaultProps = {};
 
 exports.default = Items;
 
@@ -29655,85 +30129,230 @@ var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 
 var _react2 = _interopRequireDefault(_react);
 
+var _queryString = __webpack_require__(/*! query-string */ "./node_modules/query-string/index.js");
+
+var _queryString2 = _interopRequireDefault(_queryString);
+
+var _Categories = __webpack_require__(/*! ./Categories.jsx */ "./src/components/Categories.jsx");
+
+var _Categories2 = _interopRequireDefault(_Categories);
+
+var _SingleItem = __webpack_require__(/*! ./SingleItem.jsx */ "./src/components/SingleItem.jsx");
+
+var _SingleItem2 = _interopRequireDefault(_SingleItem);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
+
+
+//Components
+
 
 var Results = function (_Component) {
   _inherits(Results, _Component);
 
-  function Results() {
-    var _ref;
-
+  function Results(props) {
     _classCallCheck(this, Results);
 
-    for (var _len = arguments.length, props = Array(_len), _key = 0; _key < _len; _key++) {
-      props[_key] = arguments[_key];
-    }
-
-    var _this = _possibleConstructorReturn(this, (_ref = Results.__proto__ || Object.getPrototypeOf(Results)).call.apply(_ref, [this].concat(props)));
+    var _this = _possibleConstructorReturn(this, (Results.__proto__ || Object.getPrototypeOf(Results)).call(this, props));
 
     _this.state = {
-      items: []
+      categories: [],
+      items: [],
+      noResults: false
     };
     return _this;
   }
+  //Obtiene los items con las categorias de acuerdo a la búsqueda realizada
+
 
   _createClass(Results, [{
-    key: 'render',
-    value: function render() {
-      return _react2.default.createElement(
-        'div',
-        { className: 'results' },
-        this.state.items
-      );
+    key: 'getItems',
+    value: function getItems() {
+      var _this2 = this;
+
+      var query = this.getQuery();
+      fetch('/api/items?q=' + query).then(function (results) {
+        return results.json();
+      }).then(function (data) {
+        _this2.setState({
+          categories: data.categories,
+          items: data.items
+        });
+      });
     }
+    //Parsea la query de la url
+
+  }, {
+    key: 'getQuery',
+    value: function getQuery() {
+      var parsedQuery = _queryString2.default.parse(location.search);
+      return parsedQuery.search;
+    }
+
+    //Obtiene los resultados cuando renderiza por primera vez
+
   }, {
     key: 'componentDidMount',
     value: function componentDidMount() {
-      var _this2 = this;
+      this.getQuery() && this.getItems();
+    }
+    //Obtiene los resultados de una nueva busqueda
 
-      fetch('https://api.mercadolibre.com/sites/MLA/search?q=guitarra').then(function (results) {
-        return results.json();
-      }).then(function (data) {
-        var items = data.results.map(function (item) {
-          return _react2.default.createElement(Item, { key: item.id, title: item.title, thumbnail: item.thumbnail, price: item.price });
+  }, {
+    key: 'componentDidUpdate',
+    value: function componentDidUpdate(prevProps) {
+      if (this.props.location.search !== prevProps.location.search) {
+        this.setState({
+          items: [],
+          categories: []
         });
-        _this2.setState(items);
-      });
+        this.getItems();
+      }
+    }
+    //Renderiza los resultados
+
+  }, {
+    key: 'render',
+    value: function render() {
+      var _state = this.state,
+          categories = _state.categories,
+          items = _state.items;
+
+
+      if (items.length) {
+        var results = items.map(function (item) {
+          return _react2.default.createElement(_SingleItem2.default, {
+            key: item.id,
+            id: item.id,
+            title: item.title,
+            currency: item.price.currency,
+            price: item.price.amount,
+            decimals: item.price.decimals,
+            picture: item.picture,
+            condition: item.condition,
+            free_shipping: item.free_shipping,
+            address: item.address
+          });
+        });
+        return _react2.default.createElement(
+          'div',
+          { className: 'results' },
+          _react2.default.createElement(_Categories2.default, { categories: categories }),
+          results
+        );
+      } else {
+        return _react2.default.createElement(
+          'div',
+          { className: 'info' },
+          _react2.default.createElement(
+            'h3',
+            null,
+            'No hay publicaciones que coincidan con tu b\xFAsqueda.'
+          ),
+          _react2.default.createElement(
+            'ul',
+            null,
+            _react2.default.createElement(
+              'li',
+              null,
+              'Revis\xE1 la ortograf\xEDa de la palabra.'
+            ),
+            _react2.default.createElement(
+              'li',
+              null,
+              'Utiliz\xE1 palabras m\xE1s gen\xE9ricas o menos palabras.'
+            ),
+            _react2.default.createElement(
+              'li',
+              null,
+              'Navega por las categor\xEDas para encontrar un producto similar.'
+            )
+          )
+        );
+      }
     }
   }]);
 
   return Results;
 }(_react.Component);
 
-function Item(props) {
+exports.default = Results;
+
+/***/ }),
+
+/***/ "./src/components/SingleItem.jsx":
+/*!***************************************!*\
+  !*** ./src/components/SingleItem.jsx ***!
+  \***************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactRouterDom = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router-dom/es/index.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+//Dependencies
+var SingleItem = function SingleItem(props) {
   return _react2.default.createElement(
     'div',
-    { className: 'item' },
-    _react2.default.createElement('img', { src: this.state.item.thumbnail }),
+    { className: 'single-item' },
+    _react2.default.createElement(
+      _reactRouterDom.Link,
+      { to: '/items/' + props.id },
+      _react2.default.createElement('img', { src: props.picture, alt: props.title })
+    ),
     _react2.default.createElement(
       'div',
-      null,
-      '$ ',
-      this.state.item.price
+      { className: 'item-price' },
+      _react2.default.createElement(
+        'span',
+        { className: 'price-tag' },
+        '$ ',
+        props.price,
+        ' ',
+        props.decimals > 0 && props.decimals
+      )
+    ),
+    _react2.default.createElement(
+      _reactRouterDom.Link,
+      { to: '/items/' + props.id },
+      _react2.default.createElement(
+        'span',
+        { className: 'item-title' },
+        props.title
+      )
+    ),
+    props.free_shipping && _react2.default.createElement(
+      'div',
+      { className: 'item-shipping' },
+      'ICONO DE FREE SHIPPING'
     ),
     _react2.default.createElement(
       'div',
       null,
-      this.state.item.title
+      props.address
     )
   );
-}
+};
 
-Results.propTypes = {};
-Results.defaultProps = {};
-
-exports.default = Results;
+exports.default = SingleItem;
 
 /***/ }),
 
@@ -29763,13 +30382,15 @@ var _App2 = _interopRequireDefault(_App);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+//Dependencies
 _reactDom2.default.render(_react2.default.createElement(
-    _reactRouterDom.BrowserRouter,
-    null,
-    _react2.default.createElement(_App2.default, null)
+  _reactRouterDom.BrowserRouter,
+  null,
+  _react2.default.createElement(_reactRouterDom.Route, { component: _App2.default })
 ), document.getElementById('app'));
+//Components
 
 /***/ })
 
 /******/ });
-//# sourceMappingURL=js.554fefd3c11dd0e8fffc.js.map
+//# sourceMappingURL=js.e289b6d7baf91c23ba7b.js.map

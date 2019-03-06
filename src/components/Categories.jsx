@@ -1,34 +1,27 @@
-import React, {Component, PropTypes} from 'react'
+//Dependencies
+import React, { Component } from 'react'
+//Components
+import Category from './Category.jsx'
 
 class Categories extends Component{
-  constructor(...props){
-    super(...props)
-    this.state = {
-      categories : props.categories
-    }
+  constructor(props){
+    super(props)
   }
 
   render(){
-    let list = []
-    for (let i = 0; i < this.state.categories.length; i++){
-      list.push(<Category name={this.state.categories[i]}/>)
-      list.push(<Separator/>)
+    const catLength = this.props.categories.length
+    if(catLength){
+      var catList = []
+      for (let i = 0; i < catLength - 1; i++){
+        const category = this.props.categories[i]
+        catList.push(<Category key={category} name={category}/>)
+      }
+      const lastCat = this.props.categories[catLength-1]
+      catList.push(<Category lastCat key={lastCat} name={lastCat}/>)
+      return <div>{ catList }</div>
+    } else {
+      return null
     }
-    list.push(<Category className="last" name={this.state.categories[length - 1]}/>)
-    
-    return <div>{ list }</div>
   }
 }
-
-function Separator(props){
-  return <span className="separator">{">"}</span>
-}
-
-function Category(props){
-  return <span className={`${props.className||""}category`}>{props.name}</span>
-}
-
-Categories.propTypes = {}
-Categories.defaultProps = {}
-
 export default Categories

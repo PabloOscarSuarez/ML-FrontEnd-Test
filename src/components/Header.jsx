@@ -1,26 +1,29 @@
-import React, { Component, PropTypes } from 'react'
+//Dependencies
+import React, { Component } from 'react'
+// import PropTypes from 'prop-types'
 
 class Header extends Component {
-  constructor(...props){
-    super(...props)
+  // static propTypes = {
+  //   search: PropTypes.string.isRequired
+  // }
+  constructor(props){
+    super(props)
+    this.handleSearchSubmit = this.handleSearchSubmit.bind(this)
+  }
+
+  handleSearchSubmit(e){
+    e.preventDefault()
+    this.props.onSearchSubmit(this.query.value)
   }
 
   render(){
     return(
-      <form onSubmit={this.submit.bind(this)}>
-        <input type="text" ref={node => this.query=node} value={this.props.search}/>
+      <form onSubmit={this.handleSearchSubmit}>
+        <input type="text" ref={node => this.query=node} defaultValue={this.props.search}/>
         <button type="submit">Buscar</button>
       </form>
     )
   }
-
-  submit(e){
-    e.preventDefault()
-    console.log(this.query.value)
-  }
 }
-
-Header.propTypes = {}
-Header.defaultProps = {}
 
 export default Header

@@ -1,11 +1,16 @@
+//Dependencies
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { BrowserRouter as Router} from 'react-router-dom'
+import { 
+    BrowserRouter as Router, 
+    Route
+} from 'react-router-dom'
+//Components
 import App from './components/App.jsx'
 
 ReactDOM.render( 
-    <Router> 
-        <App/> 
-    </Router>,
-    document.getElementById('app')
+  <Router>
+    <Route component={ App }/>            
+  </Router>,
+  document.getElementById('app')
 )
