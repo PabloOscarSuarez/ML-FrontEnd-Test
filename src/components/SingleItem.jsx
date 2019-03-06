@@ -2,7 +2,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 
-const SingleItem = (props) => {
+const SingleItem = props => {
   return(
     <div className="single-item">
       <Link to={`/items/${props.id}`}>

@@ -17,7 +17,7 @@ module.exports = function(req, res) {
                     // categories.id = data.filters[0].values[0].path_from_root.map(category => category.id)
                 }
 
-                console.log(categories);
+                // console.log(categories);
                 // console.log(data.filters[0])
                 // console.log(data.filters[0]);
                 // console.log(data.filters[0].values[0]);

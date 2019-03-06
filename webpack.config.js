@@ -8,7 +8,9 @@ module.exports = {
         js: './src/index.js'
     },
     output: {
-        filename: '[name].[chunkhash].js'
+        path: `${__dirname}/dist`,
+        filename: '[name].[chunkhash].js',
+        publicPath: '/'
     },
     devtool: 'source-map',
     module: {

@@ -1,6 +1,9 @@
 //Dependencies
 import React, { Component } from 'react'
-import { Switch, Route } from 'react-router-dom'
+import { 
+  Switch, 
+  Route 
+} from 'react-router-dom'
 //Components
 import Results from './Results.jsx'
 import ItemDetail from './ItemDetail.jsx'
@@ -14,7 +17,7 @@ class Items extends Component {
     return (
       <Switch>
         <Route exact path='/items' component={Results}/>
-        <Route exact path='/items/:id' component={ItemDetail}/>
+        <Route path='/items/:id' component={ItemDetail}/>
       </Switch>
     )
   }

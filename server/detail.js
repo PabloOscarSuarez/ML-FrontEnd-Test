@@ -2,18 +2,18 @@ const request = require('request'),
     errorApi = require('./error')
 
 module.exports = function(req, res) {
-    const id = req.params.id
-
+    const id = req.params.id;
     request(`https://api.mercadolibre.com/items/${id}`, function(error, response, body) {
+        // console.log(response);
         if (!error) {
-            let data = JSON.parse(body)
+            const data = JSON.parse(body)
                 // console.log(data)
             if (!data.error) {
                 const amount = Math.floor(data.price),
                     decimals = +(data.price % 1).toFixed(2).substring(2),
                     picture = data.pictures.length ? data.pictures[0].secure_url : '',
                     category = data.category_id
-                console.log(decimals)
+                    // console.log(decimals)
                 let detail = {
                     author: {
                         name: 'Hugo',

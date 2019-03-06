@@ -4,8 +4,9 @@
     "description": "Test práctico para aspirantes al área de front-end de Mercado Libre",
     "main": "server.js",
     "scripts": {
-        "start": "concurrently \"webpack-dev-server --mode development --open\" \"node server.js\"",
+        "start": "npm run dev",
         "dev": "webpack --mode development && node server.js",
+        "prod": "webpack --mode production && node server.js",
         "build": "webpack --mode production"
     },
     "author": "Hugo Flotts <hugoflotts@hotmail.com>",

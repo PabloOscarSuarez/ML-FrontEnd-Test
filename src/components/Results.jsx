@@ -19,13 +19,14 @@ class Results extends Component {
   getItems(){
     const query = this.getQuery()
     fetch(`/api/items?q=${query}`)
-      .then( (results) => {
-        return results.json()
+      .then( res => {
+        return res.json()
       })
       .then( data => {
         this.setState({
           categories: data.categories,
-          items: data.items
+          items: data.items,
+          noResults: !!data.items
         })
       })
   }
@@ -41,10 +42,11 @@ class Results extends Component {
   }
   //Obtiene los resultados de una nueva busqueda
   componentDidUpdate(prevProps) {
-    if (this.props.location.search !== prevProps.location.search) {
+    if (this.props.location.search != prevProps.location.search) {
       this.setState({
         items: [],
-        categories: []
+        categories: [],
+        noResults: false
       })
       this.getItems()
     }
@@ -55,8 +57,7 @@ class Results extends Component {
 
     if(items.length) {
       let results = items.map( item => {
-        return(
-          <SingleItem
+        return <SingleItem
             key={item.id}
             id={item.id}
             title={item.title}
@@ -68,7 +69,6 @@ class Results extends Component {
             free_shipping={item.free_shipping}
             address={item.address}
           />
-        )
       })
       return(
         <div className="results">
@@ -76,18 +76,18 @@ class Results extends Component {
           {results}
         </div>
       )
-    } else {
-      return (
-        <div className="info">
-          <h3>No hay publicaciones que coincidan con tu búsqueda.</h3>
-          <ul>
-            <li>Revisá la ortografía de la palabra.</li>
-            <li>Utilizá palabras más genéricas o menos palabras.</li>
-            <li>Navega por las categorías para encontrar un producto similar.</li>
-          </ul>
-        </div>
+    } else if (this.state.noResults) {
+        return (
+          <div className="info">
+            <h3>No hay publicaciones que coincidan con tu búsqueda.</h3>
+            <ul>
+              <li>Revisá la ortografía de la palabra.</li>
+              <li>Utilizá palabras más genéricas o menos palabras.</li>
+              <li>Navega por las categorías para encontrar un producto similar.</li>
+            </ul>
+          </div>
       )
-    }
+    } else return null
   }
 }
 

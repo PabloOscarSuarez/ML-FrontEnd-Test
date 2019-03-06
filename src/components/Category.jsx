@@ -1,6 +1,7 @@
+//Dependencies
 import React from 'react'
 
-const Category = (props) => {
+const Category = props => {
 
   return(
     <span className={ (props.lastCat? 'last-' : '' ) + "category"}>

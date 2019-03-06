@@ -2,8 +2,7 @@
 import React, { Component } from 'react'
 import { 
   Switch, 
-  Route, 
-  withRouter 
+  Route 
 } from 'react-router-dom'
 import queryString from 'query-string'
 //Components
@@ -15,7 +14,7 @@ class App extends Component {
   constructor(props){
     super(props)
     const parsedQuery = queryString.parse(props.location.search)
-    console.log(parsedQuery)
+    // console.log(parsedQuery)
     this.state = {
       search: parsedQuery.search || ''
     }
@@ -45,4 +44,3 @@ class App extends Component {
 }
 
 export default App
-// export default withRouter(App)

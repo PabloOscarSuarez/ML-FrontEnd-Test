@@ -77,7 +77,7 @@
 /******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
 /******/
 /******/ 	// __webpack_public_path__
-/******/ 	__webpack_require__.p = "";
+/******/ 	__webpack_require__.p = "/";
 /******/
 /******/
 /******/ 	// Load entry module and return exports
@@ -29613,7 +29613,7 @@ var App = function (_Component) {
     var _this = _possibleConstructorReturn(this, (App.__proto__ || Object.getPrototypeOf(App)).call(this, props));
 
     var parsedQuery = _queryString2.default.parse(props.location.search);
-    console.log(parsedQuery);
+    // console.log(parsedQuery)
     _this.state = {
       search: parsedQuery.search || ''
     };
@@ -29652,7 +29652,6 @@ var App = function (_Component) {
 }(_react.Component);
 
 exports.default = App;
-// export default withRouter(App)
 
 /***/ }),
 
@@ -29762,8 +29761,7 @@ var Category = function Category(props) {
       ' > '
     )
   );
-};
-
+}; //Dependencies
 exports.default = Category;
 
 /***/ }),
@@ -29788,14 +29786,14 @@ var _react2 = _interopRequireDefault(_react);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var NotFound = function NotFound(props) {
+var Error404 = function Error404(props) {
   return _react2.default.createElement(
     'span',
     null,
     'La ubicaci\xF3n solicitada no ha sido encontrada'
   );
 }; //Dependencies
-exports.default = NotFound;
+exports.default = Error404;
 
 /***/ }),
 
@@ -29828,14 +29826,9 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
 
 
-// import PropTypes from 'prop-types'
-
 var Header = function (_Component) {
   _inherits(Header, _Component);
 
-  // static propTypes = {
-  //   search: PropTypes.string.isRequired
-  // }
   function Header(props) {
     _classCallCheck(this, Header);
 
@@ -30097,7 +30090,7 @@ var Items = function (_Component) {
         _reactRouterDom.Switch,
         null,
         _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/items', component: _Results2.default }),
-        _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/items/:id', component: _ItemDetail2.default })
+        _react2.default.createElement(_reactRouterDom.Route, { path: '/items/:id', component: _ItemDetail2.default })
       );
     }
   }]);
@@ -30177,12 +30170,13 @@ var Results = function (_Component) {
       var _this2 = this;
 
       var query = this.getQuery();
-      fetch('/api/items?q=' + query).then(function (results) {
-        return results.json();
+      fetch('/api/items?q=' + query).then(function (res) {
+        return res.json();
       }).then(function (data) {
         _this2.setState({
           categories: data.categories,
-          items: data.items
+          items: data.items,
+          noResults: !!data.items
         });
       });
     }
@@ -30207,10 +30201,11 @@ var Results = function (_Component) {
   }, {
     key: 'componentDidUpdate',
     value: function componentDidUpdate(prevProps) {
-      if (this.props.location.search !== prevProps.location.search) {
+      if (this.props.location.search != prevProps.location.search) {
         this.setState({
           items: [],
-          categories: []
+          categories: [],
+          noResults: false
         });
         this.getItems();
       }
@@ -30246,7 +30241,7 @@ var Results = function (_Component) {
           _react2.default.createElement(_Categories2.default, { categories: categories }),
           results
         );
-      } else {
+      } else if (this.state.noResults) {
         return _react2.default.createElement(
           'div',
           { className: 'info' },
@@ -30275,7 +30270,7 @@ var Results = function (_Component) {
             )
           )
         );
-      }
+      } else return null;
     }
   }]);
 
@@ -30393,4 +30388,4 @@ _reactDom2.default.render(_react2.default.createElement(
 /***/ })
 
 /******/ });
-//# sourceMappingURL=js.e289b6d7baf91c23ba7b.js.map
+//# sourceMappingURL=js.84ba795496d7f5fd3300.js.map
