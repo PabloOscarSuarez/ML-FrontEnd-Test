@@ -14,13 +14,12 @@ class App extends Component {
   constructor(props){
     super(props)
     const parsedQuery = queryString.parse(props.location.search)
-    // console.log(parsedQuery)
     this.state = {
       search: parsedQuery.search || ''
     }
     this.handleSearchSubmit = this.handleSearchSubmit.bind(this)
   }
-
+  
   handleSearchSubmit(query) {
     this.props.history.push({pathname: '/items', search:`search=${query}`})
     this.setState({search : query})

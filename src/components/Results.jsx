@@ -15,37 +15,34 @@ class Results extends Component {
       noResults: false
     }
   }
-  //Obtiene los items con las categorias de acuerdo a la búsqueda realizada
+  //Parsea la location y obtiene los items con las categorias de acuerdo a la búsqueda realizada
   getItems(){
-    const query = this.getQuery()
-    fetch(`/api/items?q=${query}`)
-      .then( res => {
-        return res.json()
+    const query = queryString.parse(location.search),
+          parsedQuery = query.search
+    fetch(`/api/items?q=${parsedQuery}`)
+    .then( res => {
+      return res.json()
+    })
+    .then( data => {
+      // console.log(data)
+      this.setState({
+        categories: data.categories,
+        items: data.items,
+        noResults: !!data.items
       })
-      .then( data => {
-        this.setState({
-          categories: data.categories,
-          items: data.items,
-          noResults: !!data.items
-        })
-      })
-  }
-  //Parsea la query de la url
-  getQuery(){
-    const parsedQuery = queryString.parse(location.search)
-    return parsedQuery.search
+    })
   }
 
   //Obtiene los resultados cuando renderiza por primera vez
   componentDidMount(){
-    this.getQuery() && this.getItems()
+    this.getItems()
   }
   //Obtiene los resultados de una nueva busqueda
   componentDidUpdate(prevProps) {
-    if (this.props.location.search != prevProps.location.search) {
+    if ( this.props.location.search != prevProps.location.search ) {
       this.setState({
-        items: [],
         categories: [],
+        items: [],
         noResults: false
       })
       this.getItems()
@@ -54,22 +51,21 @@ class Results extends Component {
   //Renderiza los resultados
   render() {
     const { categories, items } = this.state
-
     if(items.length) {
       let results = items.map( item => {
         return <SingleItem
-            key={item.id}
-            id={item.id}
-            title={item.title}
-            currency={item.price.currency}
-            price={item.price.amount}
-            decimals={item.price.decimals}
-            picture={item.picture}
-            condition={item.condition}
-            free_shipping={item.free_shipping}
-            address={item.address}
-          />
-      })
+                  key={item.id}
+                  id={item.id}
+                  title={item.title}
+                  currency={item.price.currency}
+                  price={item.price.amount}
+                  decimals={item.price.decimals}
+                  picture={item.picture}
+                  condition={item.condition}
+                  free_shipping={item.free_shipping}
+                  address={item.address}
+                />
+        })
       return(
         <div className="results">
           <Categories categories={categories}/>

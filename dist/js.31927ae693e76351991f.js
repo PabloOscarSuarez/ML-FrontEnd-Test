@@ -29613,7 +29613,6 @@ var App = function (_Component) {
     var _this = _possibleConstructorReturn(this, (App.__proto__ || Object.getPrototypeOf(App)).call(this, props));
 
     var parsedQuery = _queryString2.default.parse(props.location.search);
-    // console.log(parsedQuery)
     _this.state = {
       search: parsedQuery.search || ''
     };
@@ -30161,7 +30160,7 @@ var Results = function (_Component) {
     };
     return _this;
   }
-  //Obtiene los items con las categorias de acuerdo a la búsqueda realizada
+  //Parsea la location y obtiene los items con las categorias de acuerdo a la búsqueda realizada
 
 
   _createClass(Results, [{
@@ -30169,10 +30168,12 @@ var Results = function (_Component) {
     value: function getItems() {
       var _this2 = this;
 
-      var query = this.getQuery();
-      fetch('/api/items?q=' + query).then(function (res) {
+      var query = _queryString2.default.parse(location.search),
+          parsedQuery = query.search;
+      fetch('/api/items?q=' + parsedQuery).then(function (res) {
         return res.json();
       }).then(function (data) {
+        // console.log(data)
         _this2.setState({
           categories: data.categories,
           items: data.items,
@@ -30180,21 +30181,13 @@ var Results = function (_Component) {
         });
       });
     }
-    //Parsea la query de la url
-
-  }, {
-    key: 'getQuery',
-    value: function getQuery() {
-      var parsedQuery = _queryString2.default.parse(location.search);
-      return parsedQuery.search;
-    }
 
     //Obtiene los resultados cuando renderiza por primera vez
 
   }, {
     key: 'componentDidMount',
     value: function componentDidMount() {
-      this.getQuery() && this.getItems();
+      this.getItems();
     }
     //Obtiene los resultados de una nueva busqueda
 
@@ -30203,8 +30196,8 @@ var Results = function (_Component) {
     value: function componentDidUpdate(prevProps) {
       if (this.props.location.search != prevProps.location.search) {
         this.setState({
-          items: [],
           categories: [],
+          items: [],
           noResults: false
         });
         this.getItems();
@@ -30218,7 +30211,6 @@ var Results = function (_Component) {
       var _state = this.state,
           categories = _state.categories,
           items = _state.items;
-
 
       if (items.length) {
         var results = items.map(function (item) {
@@ -30388,4 +30380,4 @@ _reactDom2.default.render(_react2.default.createElement(
 /***/ })
 
 /******/ });
-//# sourceMappingURL=js.84ba795496d7f5fd3300.js.map
+//# sourceMappingURL=js.31927ae693e76351991f.js.map
