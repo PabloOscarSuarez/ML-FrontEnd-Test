@@ -15,7 +15,7 @@ _Debe tener instalado [Node.js ](https://nodejs.org/es/download/) para poder des
 https://nodejs.org/es/download/
 ```
 
-_Luego será necesario que clonar este repositorio a su máquina local:
+_Luego será necesario que clonar este repositorio a su máquina local:_
 
 ```
 $ git clone https://github.com/hugo-ff/ML-FrontEnd-Test.git
@@ -46,7 +46,7 @@ _Ahora es necesario ir a http://localhost:8080/ para ver este desarrollo en func
 _Con el siguiente comando se genera el build_:
 
 ```
-$ npm build
+$ npm run build
 ```
 
 
