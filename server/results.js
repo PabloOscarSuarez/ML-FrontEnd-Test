@@ -3,27 +3,16 @@ const request = require('request'),
 
 module.exports = function(req, res) {
   const query = req.query.q || ''
-    // console.log(query)
   request(`https://api.mercadolibre.com/sites/MLA/search?q=${query}`, function(error, response, body) {
     if (!error) {
       let data = JSON.parse(body)
-      // console.log(data)
       //Categorias
       if (data.results) {
         let categories = []
 
         if (data.filters[0] && data.filters[0].values[0]) {
           categories = data.filters[0].values[0].path_from_root.map(category => category.name)
-
-          // categories.id = data.filters[0].values[0].path_from_root.map(category => category.id)
         }
-
-        // console.log(categories);
-        // console.log(data.filters[0])
-        // console.log(data.filters[0]);
-        // console.log(data.filters[0].values[0]);
-        // //ID CATEGORIA
-        // console.log(data.filters[0].values[0].path_from_root[0].id);
 
         //Items
         let items = data.results.slice(0, 4)

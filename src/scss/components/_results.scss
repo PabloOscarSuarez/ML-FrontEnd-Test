@@ -1,0 +1,23 @@
+.results {
+    margin-top: 1rem;
+    width: 100%;
+    margin-bottom: 1.25rem;
+}
+
+.no-results {
+    display: flex;
+    margin-top: 1rem;
+    align-items: center;
+}
+
+.no-results__info {
+    padding: 2rem;
+    background-color: var(--bg-section-w);
+    h2 {
+        color: var(--dark-grey);
+    }
+    li {
+        list-style-type: disc;
+        color: var(--dark-grey);
+    }
+}

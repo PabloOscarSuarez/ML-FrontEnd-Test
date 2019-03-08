@@ -1578,6 +1578,17 @@ module.exports = invariant;
 
 /***/ }),
 
+/***/ "./node_modules/mini-css-extract-plugin/dist/loader.js!./node_modules/css-loader/index.js?minimize&sourceMap!./node_modules/postcss-loader/lib/index.js?!./node_modules/resolve-url-loader/index.js!./node_modules/sass-loader/lib/loader.js?outputStyle=compressed&sourceMap!./src/scss/main.scss":
+/*!***************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/mini-css-extract-plugin/dist/loader.js!./node_modules/css-loader?minimize&sourceMap!./node_modules/postcss-loader/lib??ref--6-3!./node_modules/resolve-url-loader!./node_modules/sass-loader/lib/loader.js?outputStyle=compressed&sourceMap!./src/scss/main.scss ***!
+  \***************************************************************************************************************************************************************************************************************************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+// extracted by mini-css-extract-plugin
+
+/***/ }),
+
 /***/ "./node_modules/object-assign/index.js":
 /*!*********************************************!*\
   !*** ./node_modules/object-assign/index.js ***!
@@ -29400,6 +29411,497 @@ module.exports = str => encodeURIComponent(str).replace(/[!'()*]/g, x => `%${x.c
 
 /***/ }),
 
+/***/ "./node_modules/style-loader/lib/addStyles.js":
+/*!****************************************************!*\
+  !*** ./node_modules/style-loader/lib/addStyles.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/*
+	MIT License http://www.opensource.org/licenses/mit-license.php
+	Author Tobias Koppers @sokra
+*/
+
+var stylesInDom = {};
+
+var	memoize = function (fn) {
+	var memo;
+
+	return function () {
+		if (typeof memo === "undefined") memo = fn.apply(this, arguments);
+		return memo;
+	};
+};
+
+var isOldIE = memoize(function () {
+	// Test for IE <= 9 as proposed by Browserhacks
+	// @see http://browserhacks.com/#hack-e71d8692f65334173fee715c222cb805
+	// Tests for existence of standard globals is to allow style-loader
+	// to operate correctly into non-standard environments
+	// @see https://github.com/webpack-contrib/style-loader/issues/177
+	return window && document && document.all && !window.atob;
+});
+
+var getTarget = function (target) {
+  return document.querySelector(target);
+};
+
+var getElement = (function (fn) {
+	var memo = {};
+
+	return function(target) {
+                // If passing function in options, then use it for resolve "head" element.
+                // Useful for Shadow Root style i.e
+                // {
+                //   insertInto: function () { return document.querySelector("#foo").shadowRoot }
+                // }
+                if (typeof target === 'function') {
+                        return target();
+                }
+                if (typeof memo[target] === "undefined") {
+			var styleTarget = getTarget.call(this, target);
+			// Special case to return head of iframe instead of iframe itself
+			if (window.HTMLIFrameElement && styleTarget instanceof window.HTMLIFrameElement) {
+				try {
+					// This will throw an exception if access to iframe is blocked
+					// due to cross-origin restrictions
+					styleTarget = styleTarget.contentDocument.head;
+				} catch(e) {
+					styleTarget = null;
+				}
+			}
+			memo[target] = styleTarget;
+		}
+		return memo[target]
+	};
+})();
+
+var singleton = null;
+var	singletonCounter = 0;
+var	stylesInsertedAtTop = [];
+
+var	fixUrls = __webpack_require__(/*! ./urls */ "./node_modules/style-loader/lib/urls.js");
+
+module.exports = function(list, options) {
+	if (typeof DEBUG !== "undefined" && DEBUG) {
+		if (typeof document !== "object") throw new Error("The style-loader cannot be used in a non-browser environment");
+	}
+
+	options = options || {};
+
+	options.attrs = typeof options.attrs === "object" ? options.attrs : {};
+
+	// Force single-tag solution on IE6-9, which has a hard limit on the # of <style>
+	// tags it will allow on a page
+	if (!options.singleton && typeof options.singleton !== "boolean") options.singleton = isOldIE();
+
+	// By default, add <style> tags to the <head> element
+        if (!options.insertInto) options.insertInto = "head";
+
+	// By default, add <style> tags to the bottom of the target
+	if (!options.insertAt) options.insertAt = "bottom";
+
+	var styles = listToStyles(list, options);
+
+	addStylesToDom(styles, options);
+
+	return function update (newList) {
+		var mayRemove = [];
+
+		for (var i = 0; i < styles.length; i++) {
+			var item = styles[i];
+			var domStyle = stylesInDom[item.id];
+
+			domStyle.refs--;
+			mayRemove.push(domStyle);
+		}
+
+		if(newList) {
+			var newStyles = listToStyles(newList, options);
+			addStylesToDom(newStyles, options);
+		}
+
+		for (var i = 0; i < mayRemove.length; i++) {
+			var domStyle = mayRemove[i];
+
+			if(domStyle.refs === 0) {
+				for (var j = 0; j < domStyle.parts.length; j++) domStyle.parts[j]();
+
+				delete stylesInDom[domStyle.id];
+			}
+		}
+	};
+};
+
+function addStylesToDom (styles, options) {
+	for (var i = 0; i < styles.length; i++) {
+		var item = styles[i];
+		var domStyle = stylesInDom[item.id];
+
+		if(domStyle) {
+			domStyle.refs++;
+
+			for(var j = 0; j < domStyle.parts.length; j++) {
+				domStyle.parts[j](item.parts[j]);
+			}
+
+			for(; j < item.parts.length; j++) {
+				domStyle.parts.push(addStyle(item.parts[j], options));
+			}
+		} else {
+			var parts = [];
+
+			for(var j = 0; j < item.parts.length; j++) {
+				parts.push(addStyle(item.parts[j], options));
+			}
+
+			stylesInDom[item.id] = {id: item.id, refs: 1, parts: parts};
+		}
+	}
+}
+
+function listToStyles (list, options) {
+	var styles = [];
+	var newStyles = {};
+
+	for (var i = 0; i < list.length; i++) {
+		var item = list[i];
+		var id = options.base ? item[0] + options.base : item[0];
+		var css = item[1];
+		var media = item[2];
+		var sourceMap = item[3];
+		var part = {css: css, media: media, sourceMap: sourceMap};
+
+		if(!newStyles[id]) styles.push(newStyles[id] = {id: id, parts: [part]});
+		else newStyles[id].parts.push(part);
+	}
+
+	return styles;
+}
+
+function insertStyleElement (options, style) {
+	var target = getElement(options.insertInto)
+
+	if (!target) {
+		throw new Error("Couldn't find a style target. This probably means that the value for the 'insertInto' parameter is invalid.");
+	}
+
+	var lastStyleElementInsertedAtTop = stylesInsertedAtTop[stylesInsertedAtTop.length - 1];
+
+	if (options.insertAt === "top") {
+		if (!lastStyleElementInsertedAtTop) {
+			target.insertBefore(style, target.firstChild);
+		} else if (lastStyleElementInsertedAtTop.nextSibling) {
+			target.insertBefore(style, lastStyleElementInsertedAtTop.nextSibling);
+		} else {
+			target.appendChild(style);
+		}
+		stylesInsertedAtTop.push(style);
+	} else if (options.insertAt === "bottom") {
+		target.appendChild(style);
+	} else if (typeof options.insertAt === "object" && options.insertAt.before) {
+		var nextSibling = getElement(options.insertInto + " " + options.insertAt.before);
+		target.insertBefore(style, nextSibling);
+	} else {
+		throw new Error("[Style Loader]\n\n Invalid value for parameter 'insertAt' ('options.insertAt') found.\n Must be 'top', 'bottom', or Object.\n (https://github.com/webpack-contrib/style-loader#insertat)\n");
+	}
+}
+
+function removeStyleElement (style) {
+	if (style.parentNode === null) return false;
+	style.parentNode.removeChild(style);
+
+	var idx = stylesInsertedAtTop.indexOf(style);
+	if(idx >= 0) {
+		stylesInsertedAtTop.splice(idx, 1);
+	}
+}
+
+function createStyleElement (options) {
+	var style = document.createElement("style");
+
+	if(options.attrs.type === undefined) {
+		options.attrs.type = "text/css";
+	}
+
+	addAttrs(style, options.attrs);
+	insertStyleElement(options, style);
+
+	return style;
+}
+
+function createLinkElement (options) {
+	var link = document.createElement("link");
+
+	if(options.attrs.type === undefined) {
+		options.attrs.type = "text/css";
+	}
+	options.attrs.rel = "stylesheet";
+
+	addAttrs(link, options.attrs);
+	insertStyleElement(options, link);
+
+	return link;
+}
+
+function addAttrs (el, attrs) {
+	Object.keys(attrs).forEach(function (key) {
+		el.setAttribute(key, attrs[key]);
+	});
+}
+
+function addStyle (obj, options) {
+	var style, update, remove, result;
+
+	// If a transform function was defined, run it on the css
+	if (options.transform && obj.css) {
+	    result = options.transform(obj.css);
+
+	    if (result) {
+	    	// If transform returns a value, use that instead of the original css.
+	    	// This allows running runtime transformations on the css.
+	    	obj.css = result;
+	    } else {
+	    	// If the transform function returns a falsy value, don't add this css.
+	    	// This allows conditional loading of css
+	    	return function() {
+	    		// noop
+	    	};
+	    }
+	}
+
+	if (options.singleton) {
+		var styleIndex = singletonCounter++;
+
+		style = singleton || (singleton = createStyleElement(options));
+
+		update = applyToSingletonTag.bind(null, style, styleIndex, false);
+		remove = applyToSingletonTag.bind(null, style, styleIndex, true);
+
+	} else if (
+		obj.sourceMap &&
+		typeof URL === "function" &&
+		typeof URL.createObjectURL === "function" &&
+		typeof URL.revokeObjectURL === "function" &&
+		typeof Blob === "function" &&
+		typeof btoa === "function"
+	) {
+		style = createLinkElement(options);
+		update = updateLink.bind(null, style, options);
+		remove = function () {
+			removeStyleElement(style);
+
+			if(style.href) URL.revokeObjectURL(style.href);
+		};
+	} else {
+		style = createStyleElement(options);
+		update = applyToTag.bind(null, style);
+		remove = function () {
+			removeStyleElement(style);
+		};
+	}
+
+	update(obj);
+
+	return function updateStyle (newObj) {
+		if (newObj) {
+			if (
+				newObj.css === obj.css &&
+				newObj.media === obj.media &&
+				newObj.sourceMap === obj.sourceMap
+			) {
+				return;
+			}
+
+			update(obj = newObj);
+		} else {
+			remove();
+		}
+	};
+}
+
+var replaceText = (function () {
+	var textStore = [];
+
+	return function (index, replacement) {
+		textStore[index] = replacement;
+
+		return textStore.filter(Boolean).join('\n');
+	};
+})();
+
+function applyToSingletonTag (style, index, remove, obj) {
+	var css = remove ? "" : obj.css;
+
+	if (style.styleSheet) {
+		style.styleSheet.cssText = replaceText(index, css);
+	} else {
+		var cssNode = document.createTextNode(css);
+		var childNodes = style.childNodes;
+
+		if (childNodes[index]) style.removeChild(childNodes[index]);
+
+		if (childNodes.length) {
+			style.insertBefore(cssNode, childNodes[index]);
+		} else {
+			style.appendChild(cssNode);
+		}
+	}
+}
+
+function applyToTag (style, obj) {
+	var css = obj.css;
+	var media = obj.media;
+
+	if(media) {
+		style.setAttribute("media", media)
+	}
+
+	if(style.styleSheet) {
+		style.styleSheet.cssText = css;
+	} else {
+		while(style.firstChild) {
+			style.removeChild(style.firstChild);
+		}
+
+		style.appendChild(document.createTextNode(css));
+	}
+}
+
+function updateLink (link, options, obj) {
+	var css = obj.css;
+	var sourceMap = obj.sourceMap;
+
+	/*
+		If convertToAbsoluteUrls isn't defined, but sourcemaps are enabled
+		and there is no publicPath defined then lets turn convertToAbsoluteUrls
+		on by default.  Otherwise default to the convertToAbsoluteUrls option
+		directly
+	*/
+	var autoFixUrls = options.convertToAbsoluteUrls === undefined && sourceMap;
+
+	if (options.convertToAbsoluteUrls || autoFixUrls) {
+		css = fixUrls(css);
+	}
+
+	if (sourceMap) {
+		// http://stackoverflow.com/a/26603875
+		css += "\n/*# sourceMappingURL=data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))) + " */";
+	}
+
+	var blob = new Blob([css], { type: "text/css" });
+
+	var oldSrc = link.href;
+
+	link.href = URL.createObjectURL(blob);
+
+	if(oldSrc) URL.revokeObjectURL(oldSrc);
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/style-loader/lib/urls.js":
+/*!***********************************************!*\
+  !*** ./node_modules/style-loader/lib/urls.js ***!
+  \***********************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+
+/**
+ * When source maps are enabled, `style-loader` uses a link element with a data-uri to
+ * embed the css on the page. This breaks all relative urls because now they are relative to a
+ * bundle instead of the current page.
+ *
+ * One solution is to only use full urls, but that may be impossible.
+ *
+ * Instead, this function "fixes" the relative urls to be absolute according to the current page location.
+ *
+ * A rudimentary test suite is located at `test/fixUrls.js` and can be run via the `npm test` command.
+ *
+ */
+
+module.exports = function (css) {
+  // get current location
+  var location = typeof window !== "undefined" && window.location;
+
+  if (!location) {
+    throw new Error("fixUrls requires window.location");
+  }
+
+	// blank or null?
+	if (!css || typeof css !== "string") {
+	  return css;
+  }
+
+  var baseUrl = location.protocol + "//" + location.host;
+  var currentDir = baseUrl + location.pathname.replace(/\/[^\/]*$/, "/");
+
+	// convert each url(...)
+	/*
+	This regular expression is just a way to recursively match brackets within
+	a string.
+
+	 /url\s*\(  = Match on the word "url" with any whitespace after it and then a parens
+	   (  = Start a capturing group
+	     (?:  = Start a non-capturing group
+	         [^)(]  = Match anything that isn't a parentheses
+	         |  = OR
+	         \(  = Match a start parentheses
+	             (?:  = Start another non-capturing groups
+	                 [^)(]+  = Match anything that isn't a parentheses
+	                 |  = OR
+	                 \(  = Match a start parentheses
+	                     [^)(]*  = Match anything that isn't a parentheses
+	                 \)  = Match a end parentheses
+	             )  = End Group
+              *\) = Match anything and then a close parens
+          )  = Close non-capturing group
+          *  = Match anything
+       )  = Close capturing group
+	 \)  = Match a close parens
+
+	 /gi  = Get all matches, not the first.  Be case insensitive.
+	 */
+	var fixedCss = css.replace(/url\s*\(((?:[^)(]|\((?:[^)(]+|\([^)(]*\))*\))*)\)/gi, function(fullMatch, origUrl) {
+		// strip quotes (if they exist)
+		var unquotedOrigUrl = origUrl
+			.trim()
+			.replace(/^"(.*)"$/, function(o, $1){ return $1; })
+			.replace(/^'(.*)'$/, function(o, $1){ return $1; });
+
+		// already a full url? no change
+		if (/^(#|data:|http:\/\/|https:\/\/|file:\/\/\/|\s*$)/i.test(unquotedOrigUrl)) {
+		  return fullMatch;
+		}
+
+		// convert the url to a full url
+		var newUrl;
+
+		if (unquotedOrigUrl.indexOf("//") === 0) {
+		  	//TODO: should we add protocol?
+			newUrl = unquotedOrigUrl;
+		} else if (unquotedOrigUrl.indexOf("/") === 0) {
+			// path should be relative to the base url
+			newUrl = baseUrl + unquotedOrigUrl; // already starts with '/'
+		} else {
+			// path should be relative to current directory
+			newUrl = currentDir + unquotedOrigUrl.replace(/^\.\//, ""); // Strip leading './'
+		}
+
+		// send back the fixed url(...)
+		return "url(" + JSON.stringify(newUrl) + ")";
+	});
+
+	// send back the fixed css
+	return fixedCss;
+};
+
+
+/***/ }),
+
 /***/ "./node_modules/value-equal/index.js":
 /*!*******************************************!*\
   !*** ./node_modules/value-equal/index.js ***!
@@ -29581,7 +30083,7 @@ var _queryString = __webpack_require__(/*! query-string */ "./node_modules/query
 
 var _queryString2 = _interopRequireDefault(_queryString);
 
-var _Header = __webpack_require__(/*! ./Header.jsx */ "./src/components/Header.jsx");
+var _Header = __webpack_require__(/*! ./search-bar/Header.jsx */ "./src/components/search-bar/Header.jsx");
 
 var _Header2 = _interopRequireDefault(_Header);
 
@@ -29593,6 +30095,8 @@ var _Error = __webpack_require__(/*! ./Error404.jsx */ "./src/components/Error40
 
 var _Error2 = _interopRequireDefault(_Error);
 
+__webpack_require__(/*! ../scss/main.scss */ "./src/scss/main.scss");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -29602,6 +30106,8 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
 
 //Components
+
+//CSS
 
 
 var App = function (_Component) {
@@ -29637,11 +30143,19 @@ var App = function (_Component) {
           onSearchSubmit: this.handleSearchSubmit
         }),
         _react2.default.createElement(
-          _reactRouterDom.Switch,
-          null,
-          _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/', render: null }),
-          _react2.default.createElement(_reactRouterDom.Route, { path: '/items', component: _Items2.default }),
-          _react2.default.createElement(_reactRouterDom.Route, { component: _Error2.default })
+          'main',
+          { role: 'main' },
+          _react2.default.createElement(
+            'div',
+            { className: 'main-content' },
+            _react2.default.createElement(
+              _reactRouterDom.Switch,
+              null,
+              _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/', render: null }),
+              _react2.default.createElement(_reactRouterDom.Route, { path: '/items', component: _Items2.default }),
+              _react2.default.createElement(_reactRouterDom.Route, { component: _Error2.default })
+            )
+          )
         )
       );
     }
@@ -29654,10 +30168,49 @@ exports.default = App;
 
 /***/ }),
 
-/***/ "./src/components/Categories.jsx":
-/*!***************************************!*\
-  !*** ./src/components/Categories.jsx ***!
-  \***************************************/
+/***/ "./src/components/Error404.jsx":
+/*!*************************************!*\
+  !*** ./src/components/Error404.jsx ***!
+  \*************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var Error404 = function Error404(props) {
+  return _react2.default.createElement(
+    "section",
+    { className: "no-results" },
+    _react2.default.createElement(
+      "div",
+      { className: "no-results__info" },
+      _react2.default.createElement(
+        "h2",
+        null,
+        "La ubicaci\xF3n solicitada no ha sido encontrada"
+      )
+    )
+  );
+}; //Dependencies
+exports.default = Error404;
+
+/***/ }),
+
+/***/ "./src/components/Items.jsx":
+/*!**********************************!*\
+  !*** ./src/components/Items.jsx ***!
+  \**********************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -29674,7 +30227,76 @@ var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 
 var _react2 = _interopRequireDefault(_react);
 
-var _Category = __webpack_require__(/*! ./Category.jsx */ "./src/components/Category.jsx");
+var _reactRouterDom = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router-dom/es/index.js");
+
+var _Results = __webpack_require__(/*! ./item-list/Results.jsx */ "./src/components/item-list/Results.jsx");
+
+var _Results2 = _interopRequireDefault(_Results);
+
+var _ItemDetail = __webpack_require__(/*! ./item-detail/ItemDetail.jsx */ "./src/components/item-detail/ItemDetail.jsx");
+
+var _ItemDetail2 = _interopRequireDefault(_ItemDetail);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
+
+//Components
+
+
+var Items = function (_Component) {
+  _inherits(Items, _Component);
+
+  function Items(props) {
+    _classCallCheck(this, Items);
+
+    return _possibleConstructorReturn(this, (Items.__proto__ || Object.getPrototypeOf(Items)).call(this, props));
+  }
+
+  _createClass(Items, [{
+    key: 'render',
+    value: function render() {
+      return _react2.default.createElement(
+        _reactRouterDom.Switch,
+        null,
+        _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/items', component: _Results2.default }),
+        _react2.default.createElement(_reactRouterDom.Route, { path: '/items/:id', component: _ItemDetail2.default })
+      );
+    }
+  }]);
+
+  return Items;
+}(_react.Component);
+
+exports.default = Items;
+
+/***/ }),
+
+/***/ "./src/components/item-categories/Categories.jsx":
+/*!*******************************************************!*\
+  !*** ./src/components/item-categories/Categories.jsx ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _Category = __webpack_require__(/*! ./Category.jsx */ "./src/components/item-categories/Category.jsx");
 
 var _Category2 = _interopRequireDefault(_Category);
 
@@ -29712,8 +30334,12 @@ var Categories = function (_Component) {
         catList.push(_react2.default.createElement(_Category2.default, { lastCat: true, key: lastCat, name: lastCat }));
         return _react2.default.createElement(
           'div',
-          null,
-          catList
+          { className: 'categories-container', role: 'categories' },
+          _react2.default.createElement(
+            'ol',
+            null,
+            catList
+          )
         );
       } else {
         return null;
@@ -29728,10 +30354,10 @@ exports.default = Categories;
 
 /***/ }),
 
-/***/ "./src/components/Category.jsx":
-/*!*************************************!*\
-  !*** ./src/components/Category.jsx ***!
-  \*************************************/
+/***/ "./src/components/item-categories/Category.jsx":
+/*!*****************************************************!*\
+  !*** ./src/components/item-categories/Category.jsx ***!
+  \*****************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -29751,13 +30377,13 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var Category = function Category(props) {
 
   return _react2.default.createElement(
-    'span',
+    'li',
     { className: (props.lastCat ? 'last-' : '') + "category" },
     props.name,
     !props.lastCat && _react2.default.createElement(
       'i',
       { className: 'separator' },
-      ' > '
+      '  >  '
     )
   );
 }; //Dependencies
@@ -29765,41 +30391,10 @@ exports.default = Category;
 
 /***/ }),
 
-/***/ "./src/components/Error404.jsx":
-/*!*************************************!*\
-  !*** ./src/components/Error404.jsx ***!
-  \*************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-
-var _react2 = _interopRequireDefault(_react);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var Error404 = function Error404(props) {
-  return _react2.default.createElement(
-    'span',
-    null,
-    'La ubicaci\xF3n solicitada no ha sido encontrada'
-  );
-}; //Dependencies
-exports.default = Error404;
-
-/***/ }),
-
-/***/ "./src/components/Header.jsx":
-/*!***********************************!*\
-  !*** ./src/components/Header.jsx ***!
-  \***********************************/
+/***/ "./src/components/item-detail/ItemDetail.jsx":
+/*!***************************************************!*\
+  !*** ./src/components/item-detail/ItemDetail.jsx ***!
+  \***************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -29816,81 +30411,7 @@ var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 
 var _react2 = _interopRequireDefault(_react);
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
-
-
-var Header = function (_Component) {
-  _inherits(Header, _Component);
-
-  function Header(props) {
-    _classCallCheck(this, Header);
-
-    var _this = _possibleConstructorReturn(this, (Header.__proto__ || Object.getPrototypeOf(Header)).call(this, props));
-
-    _this.handleSearchSubmit = _this.handleSearchSubmit.bind(_this);
-    return _this;
-  }
-
-  _createClass(Header, [{
-    key: "handleSearchSubmit",
-    value: function handleSearchSubmit(e) {
-      e.preventDefault();
-      this.props.onSearchSubmit(this.query.value);
-    }
-  }, {
-    key: "render",
-    value: function render() {
-      var _this2 = this;
-
-      return _react2.default.createElement(
-        "form",
-        { onSubmit: this.handleSearchSubmit },
-        _react2.default.createElement("input", { type: "text", ref: function ref(node) {
-            return _this2.query = node;
-          }, defaultValue: this.props.search }),
-        _react2.default.createElement(
-          "button",
-          { type: "submit" },
-          "Buscar"
-        )
-      );
-    }
-  }]);
-
-  return Header;
-}(_react.Component);
-
-exports.default = Header;
-
-/***/ }),
-
-/***/ "./src/components/ItemDetail.jsx":
-/*!***************************************!*\
-  !*** ./src/components/ItemDetail.jsx ***!
-  \***************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-
-var _react2 = _interopRequireDefault(_react);
-
-var _Categories = __webpack_require__(/*! ./Categories.jsx */ "./src/components/Categories.jsx");
+var _Categories = __webpack_require__(/*! ../item-categories/Categories.jsx */ "./src/components/item-categories/Categories.jsx");
 
 var _Categories2 = _interopRequireDefault(_Categories);
 
@@ -29948,76 +30469,88 @@ var ItemDetail = function (_Component) {
       var item = this.state.item;
       if (item.id) {
         return _react2.default.createElement(
-          'main',
-          { role: 'main' },
+          'section',
+          { className: 'detail-section' },
+          _react2.default.createElement(_Categories2.default, { categories: this.state.categories }),
           _react2.default.createElement(
             'div',
-            { className: 'categories-nav' },
-            _react2.default.createElement(_Categories2.default, { categories: this.state.categories })
-          ),
-          _react2.default.createElement(
-            'div',
-            { className: 'item-detail' },
-            _react2.default.createElement('img', { src: item.picture, alt: item.title }),
+            { className: 'detail-container' },
             _react2.default.createElement(
               'div',
-              { className: 'item-status' },
-              item.condition == 'new' ? 'Nuevo' : 'Usado',
-              item.sold_quantity > 0 ? ' - ' + item.sold_quantity + ' vendidos' : ' - Sé el primero en comprarlo!'
-            ),
-            _react2.default.createElement(
-              'h1',
-              null,
-              item.title
-            ),
-            _react2.default.createElement(
-              'div',
-              { className: 'item-price' },
+              { className: 'item-detail-container' },
               _react2.default.createElement(
                 'span',
-                { className: 'price-tag' },
-                '$ ',
-                item.price.amount,
-                ' ',
-                item.price.decimals > 0 && item.price.decimals
+                { className: 'item-image' },
+                _react2.default.createElement('img', { src: item.picture, alt: item.title, width: '680px' })
+              ),
+              _react2.default.createElement(
+                'div',
+                { className: 'item-description' },
+                _react2.default.createElement(
+                  'h2',
+                  null,
+                  item.title
+                ),
+                !!item.description ? _react2.default.createElement(
+                  'p',
+                  { className: 'item-description-text' },
+                  item.description
+                ) : _react2.default.createElement(
+                  'p',
+                  { className: 'item-description-text' },
+                  'El vendedor no incluy\xF3 una descripci\xF3n del producto'
+                )
               )
             ),
             _react2.default.createElement(
-              'section',
-              { className: 'item-description' },
+              'div',
+              { className: 'item-info-container' },
               _react2.default.createElement(
-                'h2',
-                null,
-                'Descripci\xF3n del producto'
+                'div',
+                { className: 'item-info__status' },
+                item.condition == 'new' ? 'Nuevo' : 'Usado',
+                item.sold_quantity > 0 ? ' - ' + item.sold_quantity + ' vendidos' : ' - Sé el primero en comprarlo!'
               ),
-              !!item.description ? _react2.default.createElement(
-                'p',
-                null,
-                item.description
-              ) : _react2.default.createElement(
-                'p',
-                null,
-                'El vendedor no incluy\xF3 una descripci\xF3n del producto'
+              _react2.default.createElement(
+                'h1',
+                { className: 'item-info__title' },
+                item.title
+              ),
+              _react2.default.createElement(
+                'div',
+                { className: 'item-info__price' },
+                item.price.amount,
+                ' ',
+                item.price.decimals > 0 && item.price.decimals
+              ),
+              _react2.default.createElement(
+                'button',
+                { className: 'btn--primary', 'aria-label': 'comprar' },
+                'Comprar'
               )
             )
           )
         );
       } else if (this.state.noResults) {
         return _react2.default.createElement(
-          'div',
-          { className: 'info' },
+          'section',
+          { className: 'no-results' },
           _react2.default.createElement(
-            'h3',
-            null,
-            'El producto solicitado no se encuentra disponible'
-          ),
-          _react2.default.createElement(
-            'ul',
-            null,
+            'div',
+            { className: 'no-results__info' },
             _react2.default.createElement(
-              'li',
+              'h2',
               null,
-              'Navega por las categor\xEDas para encontrar un producto similar.'
+              'El producto solicitado no se encuentra disponible.'
+            ),
+            _react2.default.createElement(
+              'ul',
+              null,
+              _react2.default.createElement(
+                'li',
+                null,
+                'Navega por las categor\xEDas para encontrar un producto similar.'
+              )
             )
           )
         );
@@ -30032,79 +30565,10 @@ exports.default = ItemDetail;
 
 /***/ }),
 
-/***/ "./src/components/Items.jsx":
-/*!**********************************!*\
-  !*** ./src/components/Items.jsx ***!
-  \**********************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-
-var _react2 = _interopRequireDefault(_react);
-
-var _reactRouterDom = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router-dom/es/index.js");
-
-var _Results = __webpack_require__(/*! ./Results.jsx */ "./src/components/Results.jsx");
-
-var _Results2 = _interopRequireDefault(_Results);
-
-var _ItemDetail = __webpack_require__(/*! ./ItemDetail.jsx */ "./src/components/ItemDetail.jsx");
-
-var _ItemDetail2 = _interopRequireDefault(_ItemDetail);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
-
-//Components
-
-
-var Items = function (_Component) {
-  _inherits(Items, _Component);
-
-  function Items(props) {
-    _classCallCheck(this, Items);
-
-    return _possibleConstructorReturn(this, (Items.__proto__ || Object.getPrototypeOf(Items)).call(this, props));
-  }
-
-  _createClass(Items, [{
-    key: 'render',
-    value: function render() {
-      return _react2.default.createElement(
-        _reactRouterDom.Switch,
-        null,
-        _react2.default.createElement(_reactRouterDom.Route, { exact: true, path: '/items', component: _Results2.default }),
-        _react2.default.createElement(_reactRouterDom.Route, { path: '/items/:id', component: _ItemDetail2.default })
-      );
-    }
-  }]);
-
-  return Items;
-}(_react.Component);
-
-exports.default = Items;
-
-/***/ }),
-
-/***/ "./src/components/Results.jsx":
-/*!************************************!*\
-  !*** ./src/components/Results.jsx ***!
-  \************************************/
+/***/ "./src/components/item-list/Results.jsx":
+/*!**********************************************!*\
+  !*** ./src/components/item-list/Results.jsx ***!
+  \**********************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -30125,11 +30589,11 @@ var _queryString = __webpack_require__(/*! query-string */ "./node_modules/query
 
 var _queryString2 = _interopRequireDefault(_queryString);
 
-var _Categories = __webpack_require__(/*! ./Categories.jsx */ "./src/components/Categories.jsx");
+var _Categories = __webpack_require__(/*! ../item-categories/Categories.jsx */ "./src/components/item-categories/Categories.jsx");
 
 var _Categories2 = _interopRequireDefault(_Categories);
 
-var _SingleItem = __webpack_require__(/*! ./SingleItem.jsx */ "./src/components/SingleItem.jsx");
+var _SingleItem = __webpack_require__(/*! ./SingleItem.jsx */ "./src/components/item-list/SingleItem.jsx");
 
 var _SingleItem2 = _interopRequireDefault(_SingleItem);
 
@@ -30173,7 +30637,6 @@ var Results = function (_Component) {
       fetch('/api/items?q=' + parsedQuery).then(function (res) {
         return res.json();
       }).then(function (data) {
-        // console.log(data)
         _this2.setState({
           categories: data.categories,
           items: data.items,
@@ -30228,37 +30691,49 @@ var Results = function (_Component) {
           });
         });
         return _react2.default.createElement(
-          'div',
+          'section',
           { className: 'results' },
           _react2.default.createElement(_Categories2.default, { categories: categories }),
-          results
+          _react2.default.createElement(
+            'div',
+            { className: 'search-results' },
+            _react2.default.createElement(
+              'ol',
+              null,
+              results
+            )
+          )
         );
       } else if (this.state.noResults) {
         return _react2.default.createElement(
-          'div',
-          { className: 'info' },
+          'results',
+          { className: 'no-results container' },
           _react2.default.createElement(
-            'h3',
-            null,
-            'No hay publicaciones que coincidan con tu b\xFAsqueda.'
-          ),
-          _react2.default.createElement(
-            'ul',
-            null,
+            'div',
+            { className: 'no-results__info' },
             _react2.default.createElement(
-              'li',
+              'h2',
               null,
-              'Revis\xE1 la ortograf\xEDa de la palabra.'
+              'No hay publicaciones que coincidan con tu b\xFAsqueda.'
             ),
             _react2.default.createElement(
-              'li',
+              'ul',
               null,
-              'Utiliz\xE1 palabras m\xE1s gen\xE9ricas o menos palabras.'
-            ),
-            _react2.default.createElement(
-              'li',
-              null,
-              'Navega por las categor\xEDas para encontrar un producto similar.'
+              _react2.default.createElement(
+                'li',
+                null,
+                'Revis\xE1 la ortograf\xEDa de la palabra.'
+              ),
+              _react2.default.createElement(
+                'li',
+                null,
+                'Utiliz\xE1 palabras m\xE1s gen\xE9ricas o menos palabras.'
+              ),
+              _react2.default.createElement(
+                'li',
+                null,
+                'Navega por las categor\xEDas para encontrar un producto similar.'
+              )
             )
           )
         );
@@ -30273,10 +30748,10 @@ exports.default = Results;
 
 /***/ }),
 
-/***/ "./src/components/SingleItem.jsx":
-/*!***************************************!*\
-  !*** ./src/components/SingleItem.jsx ***!
-  \***************************************/
+/***/ "./src/components/item-list/SingleItem.jsx":
+/*!*************************************************!*\
+  !*** ./src/components/item-list/SingleItem.jsx ***!
+  \*************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -30298,48 +30773,162 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 //Dependencies
 var SingleItem = function SingleItem(props) {
   return _react2.default.createElement(
-    'div',
-    { className: 'single-item' },
-    _react2.default.createElement(
-      _reactRouterDom.Link,
-      { to: '/items/' + props.id },
-      _react2.default.createElement('img', { src: props.picture, alt: props.title })
-    ),
+    'li',
+    { key: props.id, className: 'single-item' },
     _react2.default.createElement(
       'div',
-      { className: 'item-price' },
+      { className: 'single-item__row' },
       _react2.default.createElement(
-        'span',
-        { className: 'price-tag' },
-        '$ ',
-        props.price,
-        ' ',
-        props.decimals > 0 && props.decimals
-      )
-    ),
-    _react2.default.createElement(
-      _reactRouterDom.Link,
-      { to: '/items/' + props.id },
+        'div',
+        { className: 'single-item__image' },
+        _react2.default.createElement(
+          _reactRouterDom.Link,
+          { to: '/items/' + props.id },
+          _react2.default.createElement('img', { src: props.picture, alt: props.title })
+        )
+      ),
       _react2.default.createElement(
-        'span',
-        { className: 'item-title' },
-        props.title
+        'div',
+        { className: 'single-item__info' },
+        _react2.default.createElement(
+          'div',
+          { className: 'single-item__info_location' },
+          props.address
+        ),
+        _react2.default.createElement(
+          'div',
+          { className: 'single-item__info_price' },
+          _react2.default.createElement(
+            'span',
+            { className: 'price-tag' },
+            props.price,
+            ' ',
+            props.decimals > 0 && props.decimals
+          ),
+          props.free_shipping && _react2.default.createElement(
+            'span',
+            {
+              className: 'single-item__info_shipping',
+              title: 'Env\xEDo sin cargo a todo el pa\xEDs'
+            },
+            '\xA0'
+          )
+        ),
+        _react2.default.createElement(
+          _reactRouterDom.Link,
+          { to: '/items/' + props.id },
+          _react2.default.createElement(
+            'h2',
+            { className: 'single-item__info_title' },
+            props.title
+          )
+        )
       )
-    ),
-    props.free_shipping && _react2.default.createElement(
-      'div',
-      { className: 'item-shipping' },
-      'ICONO DE FREE SHIPPING'
-    ),
-    _react2.default.createElement(
-      'div',
-      null,
-      props.address
     )
   );
 };
 
 exports.default = SingleItem;
+
+/***/ }),
+
+/***/ "./src/components/search-bar/Header.jsx":
+/*!**********************************************!*\
+  !*** ./src/components/search-bar/Header.jsx ***!
+  \**********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactRouterDom = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router-dom/es/index.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } //Dependencies
+
+
+var Header = function (_Component) {
+  _inherits(Header, _Component);
+
+  function Header(props) {
+    _classCallCheck(this, Header);
+
+    var _this = _possibleConstructorReturn(this, (Header.__proto__ || Object.getPrototypeOf(Header)).call(this, props));
+
+    _this.handleSearchSubmit = _this.handleSearchSubmit.bind(_this);
+    return _this;
+  }
+
+  _createClass(Header, [{
+    key: 'handleSearchSubmit',
+    value: function handleSearchSubmit(e) {
+      e.preventDefault();
+      this.props.onSearchSubmit(this.query.value);
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _this2 = this;
+
+      return _react2.default.createElement(
+        'header',
+        { className: 'main-header' },
+        _react2.default.createElement(
+          'div',
+          { className: 'l-container main-header__block' },
+          _react2.default.createElement(_reactRouterDom.Link, { to: '/', className: 'main-logo' }),
+          _react2.default.createElement(
+            'form',
+            { onSubmit: this.handleSearchSubmit, className: 'main-form' },
+            _react2.default.createElement('input', {
+              className: 'main-form__input',
+              type: 'text',
+              placeholder: 'Nunca dejes de buscar',
+              'aria-label': 'Nunca dejes de buscar',
+              ref: function ref(node) {
+                return _this2.query = node;
+              },
+              defaultValue: this.props.search
+            }),
+            _react2.default.createElement(
+              'button',
+              { type: 'submit', className: 'main-form__btn', 'aria-label': 'buscar' },
+              _react2.default.createElement(
+                'i',
+                { className: 'main-form__search-icon' },
+                _react2.default.createElement(
+                  'span',
+                  null,
+                  'Buscar'
+                )
+              )
+            )
+          )
+        )
+      );
+    }
+  }]);
+
+  return Header;
+}(_react.Component);
+
+exports.default = Header;
 
 /***/ }),
 
@@ -30377,7 +30966,37 @@ _reactDom2.default.render(_react2.default.createElement(
 ), document.getElementById('app'));
 //Components
 
+/***/ }),
+
+/***/ "./src/scss/main.scss":
+/*!****************************!*\
+  !*** ./src/scss/main.scss ***!
+  \****************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+
+var content = __webpack_require__(/*! !../../node_modules/mini-css-extract-plugin/dist/loader.js!../../node_modules/css-loader?minimize&sourceMap!../../node_modules/postcss-loader/lib??ref--6-3!../../node_modules/resolve-url-loader!../../node_modules/sass-loader/lib/loader.js?outputStyle=compressed&sourceMap!./main.scss */ "./node_modules/mini-css-extract-plugin/dist/loader.js!./node_modules/css-loader/index.js?minimize&sourceMap!./node_modules/postcss-loader/lib/index.js?!./node_modules/resolve-url-loader/index.js!./node_modules/sass-loader/lib/loader.js?outputStyle=compressed&sourceMap!./src/scss/main.scss");
+
+if(typeof content === 'string') content = [[module.i, content, '']];
+
+var transform;
+var insertInto;
+
+
+
+var options = {"hmr":true}
+
+options.transform = transform
+options.insertInto = undefined;
+
+var update = __webpack_require__(/*! ../../node_modules/style-loader/lib/addStyles.js */ "./node_modules/style-loader/lib/addStyles.js")(content, options);
+
+if(content.locals) module.exports = content.locals;
+
+if(false) {}
+
 /***/ })
 
 /******/ });
-//# sourceMappingURL=js.31927ae693e76351991f.js.map
+//# sourceMappingURL=js.f65df3908f16ce32acad.js.map

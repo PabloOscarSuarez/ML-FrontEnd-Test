@@ -5,8 +5,8 @@ import {
   Route 
 } from 'react-router-dom'
 //Components
-import Results from './Results.jsx'
-import ItemDetail from './ItemDetail.jsx'
+import Results from './item-list/Results.jsx'
+import ItemDetail from './item-detail/ItemDetail.jsx'
 
 class Items extends Component {
   constructor(props){

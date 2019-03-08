@@ -1,0 +1,55 @@
+$max-width: 1200px;
+$header-height: 3rem;
+$logo-height: 36px;
+$logo-width: 53px;
+$breakpoints: ( xs: 480px, s: 575px, m: 768px, l: 960px);
+// Paleta de colores
+:root {
+    --color-brand: #FFE600;
+    --light-grey: #999999;
+    --medium-grey: #666666;
+    --dark-grey: #333333;
+    --bg-color: #EEEEEE;
+    --btn-primary: #3483FA;
+    --bg-section-w: #FFFFFF;
+}
+
+// Variables de apilamiento (z-index)
+:root {
+    --z-back: -10;
+    --z-normal: 1;
+    --z-tooltip: 10;
+    --z-fixed: 100;
+    --z-modal: 1000;
+}
+
+//Variables de tipografía
+:root {
+    --font-family: 'Proxima Nova', -apple-system, 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;
+    --h1-font-size: 2rem;
+    --h2-font-size: 1.5rem;
+    --h3-font-size: 1.25rem;
+    --body-font-size: .9rem;
+    --small-font-size: .75rem;
+    //Categorias
+    --categories-font-size: .875rem; //14px
+    //Barra de busqueda
+    --search-input-font-size: 1.125rem; //18px
+    //Vista de resultados
+    --results-address-font-size: .75rem; //12px
+    --results-title-font-size: 1.125rem; //18px
+    --results-price-font-size: 1.5rem; //24px
+    //Vista de detalle
+    --detail-status-font-size: .875rem; //14px
+    --detail-title-font-size: 1.5rem; //24px
+    --detail-price-font-size: 2.875rem; //46px
+    --detail-description-title-font-size: 1.75rem; //28px
+    --detail-description-font-size: 1rem; //16px
+    @include from(l) {
+        --h1-font-size: 2.5rem;
+        --h2-font-size: 1.75rem;
+        --h3-font-size: 1.5rem;
+        --body-font-size: 1rem;
+        --small-font-size: .8rem;
+    }
+}

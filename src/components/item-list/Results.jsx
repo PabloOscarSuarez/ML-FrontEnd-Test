@@ -3,7 +3,7 @@ import React, { Component } from 'react'
 import queryString from 'query-string'
 
 //Components
-import Categories from './Categories.jsx'
+import Categories from '../item-categories/Categories.jsx'
 import SingleItem from './SingleItem.jsx'
 
 class Results extends Component {
@@ -24,7 +24,6 @@ class Results extends Component {
       return res.json()
     })
     .then( data => {
-      // console.log(data)
       this.setState({
         categories: data.categories,
         items: data.items,
@@ -65,23 +64,29 @@ class Results extends Component {
                   free_shipping={item.free_shipping}
                   address={item.address}
                 />
-        })
+        })        
       return(
-        <div className="results">
-          <Categories categories={categories}/>
-          {results}
-        </div>
+        <section className="results">
+            <Categories categories={categories}/>
+            <div className="search-results">
+              <ol>
+                {results}
+              </ol>
+            </div>
+        </section>
       )
     } else if (this.state.noResults) {
         return (
-          <div className="info">
-            <h3>No hay publicaciones que coincidan con tu búsqueda.</h3>
-            <ul>
-              <li>Revisá la ortografía de la palabra.</li>
-              <li>Utilizá palabras más genéricas o menos palabras.</li>
-              <li>Navega por las categorías para encontrar un producto similar.</li>
-            </ul>
-          </div>
+          <results className="no-results container">
+            <div className="no-results__info">
+              <h2>No hay publicaciones que coincidan con tu búsqueda.</h2>
+              <ul>
+                <li>Revisá la ortografía de la palabra.</li>
+                <li>Utilizá palabras más genéricas o menos palabras.</li>
+                <li>Navega por las categorías para encontrar un producto similar.</li>
+              </ul>
+            </div>
+          </results>
       )
     } else return null
   }

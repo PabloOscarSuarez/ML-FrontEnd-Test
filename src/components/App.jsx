@@ -6,9 +6,11 @@ import {
 } from 'react-router-dom'
 import queryString from 'query-string'
 //Components
-import Header from './Header.jsx'
+import Header from './search-bar/Header.jsx'
 import Items from './Items.jsx'
 import Error404 from './Error404.jsx'
+//CSS
+import '../scss/main.scss'
 
 class App extends Component {
   constructor(props){
@@ -32,11 +34,15 @@ class App extends Component {
           search = {this.state.search}
           onSearchSubmit = {this.handleSearchSubmit}
         />
-        <Switch>
-          <Route exact path='/' render={ null }/>
-          <Route path='/items' component={ Items }/>
-          <Route component={ Error404 }/>
-        </Switch>
+        <main role="main">
+          <div className="main-content">
+            <Switch>
+              <Route exact path='/' render={ null }/>
+              <Route path='/items' component={ Items }/>
+              <Route component={ Error404 }/>
+            </Switch>
+          </div>
+        </main>
       </div>
     ) 
   }

@@ -70,6 +70,7 @@ module.exports = {
         new HtmlWebpackPlugin({
             template: './src/template.html',
             filename: 'index.html',
+            favicon: 'src/assets/favicon.ico',
             chunks: ['js']
         })
     ]

@@ -1,0 +1,18 @@
+.categories-container {
+    padding-left: 1rem;
+    font-size: var(--categories-font-size);
+    font-weight: 400;
+    color: var(--light-grey);
+    ol {
+        list-style: none;
+        // padding-top: 16px;
+        padding-bottom: 1rem;
+        margin: 0;
+    }
+    li {
+        display: inline-block;
+    }
+    li:last-child {
+        font-weight: 600;
+    }
+}

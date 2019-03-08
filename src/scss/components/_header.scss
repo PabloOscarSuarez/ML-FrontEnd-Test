@@ -1,0 +1,72 @@
+.main-header {
+    background-color: var(--color-brand);
+}
+
+.main-header__block {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: $header-height;
+}
+
+.main-logo {
+    background-image: url(../../assets/img/Logo_ML.png);
+    @include img-2x('../../assets/img/Logo_ML@2x.png', $logo-width, $logo-height);
+    background-repeat: no-repeat;
+    height: $logo-height;
+    width: $logo-width;
+    margin-right: 10px;
+}
+
+.main-form {
+    display: flex;
+    justify-content: space-between;
+    flex: 0.9;
+    max-width: 800px;
+    height: $header-height;
+    padding: .5rem 0;
+    @include from(m) {
+        flex: 0.7;
+    }
+}
+
+.main-form__input {
+    background-color: var(--bg-section-w);
+    font-size: var(--search-input-font-size);
+    width: 100%;
+    border: 0;
+    border-radius: 3px;
+    padding: 3px 35px 3px 15px;
+    position: relative;
+    transition: all 0.3s ease;
+    @include from(m) {
+        border-radius: 3px 0 0 3px;
+    }
+}
+
+.main-form__btn {
+    display: none;
+    background-color: var(--bg-color);
+    border: none;
+    outline: none;
+    border-radius: 0 3px 3px 0px;
+    width: 2rem;
+    height: 2rem;
+    position: relative;
+    @include from(m) {
+        display: flex;
+    }
+    .main-form__search-icon {
+        background-image: url(../../assets/img/ic_Search.png);
+        @include img-2x('../../assets/img/ic_Search@2x.png', 1.125rem, 1.125rem);
+        height: 1.125rem;
+        width: 1.125rem;
+        right: 6px;
+        top: 8px;
+        position: absolute;
+    }
+    span {
+        display: none;
+    }
+}

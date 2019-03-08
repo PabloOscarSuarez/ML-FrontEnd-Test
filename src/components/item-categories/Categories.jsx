@@ -18,7 +18,13 @@ class Categories extends Component{
       }
       const lastCat = this.props.categories[catLength-1]
       catList.push(<Category lastCat key={lastCat} name={lastCat}/>)
-      return <div>{ catList }</div>
+      return (
+        <div className="categories-container" role="categories">
+          <ol>
+            { catList }
+          </ol>
+        </div>
+      )
     } else {
       return null
     }
