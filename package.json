@@ -4,9 +4,8 @@
     "description": "Test práctico para aspirantes al área de front-end de Mercado Libre",
     "main": "server.js",
     "scripts": {
-        "start": "npm run dev",
+        "start": "npm run prod",
         "dev": "webpack --mode development && node server.js",
-        "dev2": "webpack-dev-server --mode development --open",
         "prod": "webpack --mode production && node server.js",
         "build": "webpack --mode production"
     },
